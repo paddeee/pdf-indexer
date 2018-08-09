@@ -1,0 +1,16 @@
+.container {
+  display: flex;
+}
+
+.treeview {
+  border-right: 1px solid #eee;
+  flex: 1;
+}
+
+.preview-image {
+  flex: 2;
+}
+
+.image-card {
+  max-width: 600px;
+}

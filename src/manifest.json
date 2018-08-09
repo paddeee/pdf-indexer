@@ -1,7 +1,7 @@
 {
   "name": "Ionic PWA Toolkit",
   "short_name": "Ionic PWA",
-  "start_url": "/",
+  "start_url": "index.html",
   "display": "standalone",
   "icons": [{
     "src": "assets/icon/icon.png",
