@@ -1,10 +1,6 @@
 .container {
   display: flex;
-}
-
-.treeview {
-  border-right: 1px solid #eee;
-  flex: 1;
+  height: 100%;
 }
 
 .preview-image {
@@ -13,4 +9,87 @@
 
 .image-card {
   max-width: 600px;
+}
+
+/* TreeView Styles */
+
+.treeview {
+  border-right: 1px solid #eee;
+  flex: 1;
+  font-size: 14px;
+}
+
+.treeview > ul {
+  display: block;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+  overflow: hidden;
+  position: relative;
+  display: none;
+}
+
+li {
+  display: block;
+  margin: 0;
+  padding: 0 0 0 16px;
+}
+
+.collapsible-directory {
+  cursor: pointer;
+}
+
+.ion-icon {
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.expanded > .collapsible-directory ion-icon {
+  transform: rotate(45deg);
+}
+
+.expanded > ul {
+  display: block;
+}
+
+.item-container {
+  border-color: transparent;
+  border-style: solid;
+  border-radius: 2px;
+  border-width: 1px;
+  display: inline-block;
+  margin: 1px 0 1px .3333em;
+  padding: .429em .6667em .429em .5833em;
+  line-height: 1.3333em;
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+.item-container--selected,
+.item-container:hover,
+.item-container:active {
+  background-color: #ebebeb;
+}
+
+.directory {
+  background-image: url(/assets/images/treeview-sprite.png);
+  background-position: 0 -16px;
+  display: inline-block;
+  vertical-align: top;
+  margin-right: 3px;
+  width: 16px;
+  height: 16px;
+}
+
+.pdf {
+  background-image: url(/assets/images/treeview-sprite.png);
+  background-position: 0 -32px;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  vertical-align: top;
+  margin-right: 3px;
 }

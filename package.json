@@ -14,6 +14,8 @@
     "test.watch": "jest --watch"
   },
   "dependencies": {
+    "@capacitor/cli": "^1.0.0-beta.4",
+    "@capacitor/core": "^1.0.0-beta.4",
     "@ionic/core": "4.0.0-beta.0",
     "@stencil/core": "0.11.0"
   },
