@@ -7,27 +7,31 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 import '@ionic/core';
 import { Component, State, Listen } from '@stencil/core';
 const ipcRenderer = require('electron').ipcRenderer;
+require('electron').webFrame.registerURLSchemeAsPrivileged('file');
+//let ipcRenderer;
 let MyApp = class MyApp {
+    //let ipcRenderer;
     constructor() {
+        this.searchResults = [];
         this.preventSingleClick = false;
-        this.testStructure = [
+        this.browserDirectoryStructure = [
             { name: "Furniture", type: 'directory', items: [
-                    { name: "Sofas.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+                    { name: "Sofas.pdf", type: 'file', path: "/path/to/Sofas.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
                     { name: "Tables & Chairs", type: 'directory', items: [
-                            { name: "Tables.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-                            { name: "Chairs.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+                            { name: "Tables.pdf", type: 'file', path: "/path/to/Tables.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+                            { name: "Chairs.pdf", type: 'file', path: "/path/to/Chairs.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
                         ]
                     },
-                    { name: "Occasional Furniture.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+                    { name: "Occasional Furniture.pdf", type: 'file', path: "/path/to/Occasional Furniture.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
                 ]
             },
-            { name: "Kitchen Units.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+            { name: "Kitchen Units.pdf", type: 'file', path: "/path/to/Kitchen Units.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
             { name: "Decor", type: 'directory', items: [
-                    { name: "Bed Linen.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-                    { name: "Carpets.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+                    { name: "Bed Linen.pdf", type: 'file', path: "/path/to/Bed Linen.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+                    { name: "Carpets.pdf", type: 'file', path: "/path/to/Carpets.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
                     { name: "Curtains & Blinds", type: 'directory', items: [
-                            { name: "Curtains.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-                            { name: "Blinds.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+                            { name: "Curtains.pdf", type: 'file', path: "/path/to/Curtains.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+                            { name: "Blinds.pdf", type: 'file', path: "/path/to/Blinds.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
                         ]
                     }
                 ]
@@ -45,11 +49,19 @@ let MyApp = class MyApp {
         if (ipcRenderer) {
             ipcRenderer.on('directory-tree-created', (event, arg) => {
                 console.log(event, arg);
-                this.sortDirectories(arg);
-                this.directoryStructure = this.createDirectoryTreeJSX(arg);
-                console.log(this.directoryStructure);
+                this.appDirectoryStructure = arg;
+                this.sortDirectories(this.appDirectoryStructure);
+                this.directoryTreeJSX = this.createDirectoryTreeJSX(this.appDirectoryStructure);
+                setTimeout(() => {
+                    ipcRenderer.send('app-ready');
+                }, 2000);
             });
             ipcRenderer.send('renderer-ready');
+        }
+        else {
+            this.sortDirectories(this.browserDirectoryStructure);
+            this.directoryTreeJSX = this.createDirectoryTreeJSX(this.browserDirectoryStructure);
+            console.log(this.browserDirectoryStructure);
         }
     }
     // Used recursively to drill down through directories to group directories
@@ -66,6 +78,16 @@ let MyApp = class MyApp {
             return -1;
         }
         return 0;
+    }
+    flattenHelper(into, item) {
+        if (item == null) {
+            return into;
+        }
+        if (Array.isArray(item)) {
+            return item.reduce(this.flattenHelper.bind(this), into);
+        }
+        into.push(item);
+        return this.flattenHelper(into, item.items);
     }
     createDirectoryTreeJSX(directory) {
         const directoryLength = directory.length;
@@ -92,7 +114,7 @@ let MyApp = class MyApp {
                     }
                     if (isFile) {
                         itemJSX = (h("div", null,
-                            h("span", { class: "item-container", onClick: event => this.handleFileClick(event), onDblClick: () => this.handleFileDoubleClick() },
+                            h("span", { class: "item-container", onClick: event => this.handleFileClick(event, item), onDblClick: () => this.handleFileDoubleClick(item) },
                                 h("span", { class: "pdf" }),
                                 item.name)));
                     }
@@ -102,10 +124,10 @@ let MyApp = class MyApp {
                 })));
         }
     }
-    handleFileClick(event) {
+    handleFileClick(event, pdf) {
         this.timer = setTimeout(() => {
             if (!this.preventSingleClick) {
-                this.fileSelected(event);
+                this.fileSelected(event, pdf);
             }
             this.preventSingleClick = false;
         }, 200);
@@ -113,17 +135,22 @@ let MyApp = class MyApp {
     handleDirectoryClick(event) {
         this.toggleDirectory(event);
     }
-    handleFileDoubleClick() {
+    handleFileDoubleClick(pdf) {
         clearTimeout(this.timer);
         this.preventSingleClick = true;
-        this.openFile();
+        this.openFile(pdf.path);
     }
-    fileSelected(event) {
+    fileSelected(event, pdf) {
         event.target.classList.add('item-container--selected');
-        console.log('Show Preview of File Selected', event.target);
+        console.log('Show Preview of File Selected', pdf);
     }
-    openFile() {
-        console.log('Open File');
+    openFile(path) {
+        if (ipcRenderer) {
+            ipcRenderer.send('open-file', path);
+        }
+        else {
+            console.log('Browser cannot open file');
+        }
     }
     toggleDirectory(event) {
         const directoryContainer = event.currentTarget.parentNode;
@@ -135,29 +162,52 @@ let MyApp = class MyApp {
         else {
             directoryContainer.classList.add('expanded');
         }
-        console.log(directoryContainer, itemGroup);
     }
     deSelectItems() {
         const selectedItems = Array.from(document.querySelectorAll('.item-container--selected'));
         selectedItems.forEach(item => item.classList.remove('item-container--selected'));
         console.log('Show Default Preview', event.target);
     }
+    searchBarHandler(event) {
+        const searchString = event.target.value;
+        this.setFilteredResults(searchString);
+    }
+    setFilteredResults(searchString) {
+        const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
+        if (searchString === '') {
+            this.searchResults = [];
+            return;
+        }
+        this.searchResults = flatStructure.filter(item => {
+            return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
+        });
+    }
     render() {
         return [
             h("ion-header", null,
                 h("ion-toolbar", { color: "primary" },
-                    h("ion-title", null, "PDF Manager"))),
+                    h("ion-searchbar", { animated: true, onIonInput: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }))),
             h("ion-content", null,
                 h("div", { class: "container" },
-                    h("div", { class: "treeview" }, this.directoryStructure),
-                    h("div", { class: "preview-image" },
-                        h("ion-card", { class: "image-card" }, "Preview Image"))))
+                    h("div", { class: "treeview" }, this.directoryTreeJSX),
+                    h("div", { class: "search-results" },
+                        h("ion-card", { class: "results-card" },
+                            h("ion-card-content", null,
+                                h("ion-card-title", null, "Search Results"),
+                                h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(pdf => h("ion-item", { detail: true, onClick: event => this.handleFileClick(event, pdf), onDblClick: () => this.handleFileDoubleClick(pdf) },
+                                    h("span", { class: "pdf" }),
+                                    h("ion-label", null,
+                                        pdf.name,
+                                        h("span", { class: "pdf-path" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search")))))))
         ];
     }
 };
 __decorate([
     State()
-], MyApp.prototype, "directoryStructure", void 0);
+], MyApp.prototype, "directoryTreeJSX", void 0);
+__decorate([
+    State()
+], MyApp.prototype, "searchResults", void 0);
 __decorate([
     State()
 ], MyApp.prototype, "preventSingleClick", void 0);
@@ -166,7 +216,10 @@ __decorate([
 ], MyApp.prototype, "timer", void 0);
 __decorate([
     State()
-], MyApp.prototype, "testStructure", void 0);
+], MyApp.prototype, "appDirectoryStructure", void 0);
+__decorate([
+    State()
+], MyApp.prototype, "browserDirectoryStructure", void 0);
 __decorate([
     Listen('body:click')
 ], MyApp.prototype, "handleBodyClick", null);

@@ -3,12 +3,30 @@
   height: 100%;
 }
 
-.preview-image {
+.search-results {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 0;
   flex: 2;
 }
 
-.image-card {
-  max-width: 600px;
+h1 {
+  font-size: 20px;
+  text-align: center;
+}
+
+.results-card {
+  width: 80%;
+  height: 80vh;
+  overflow: auto;
+}
+
+ion-card-title {
+  padding: 0 0 10px;
+}
+
+ion-label.sc-ion-label-md-h {
+  margin: 6px 8px;
 }
 
 /* TreeView Styles */
@@ -18,7 +36,7 @@
   flex: 1;
   font-size: 14px;
   overflow: auto;
-  padding: 0 0 100px;
+  padding: 20px 0 100px;
 }
 
 .treeview > ul {
@@ -96,4 +114,9 @@ img {
   height: 16px;
   vertical-align: top;
   margin-right: 3px;
+}
+
+.pdf-path {
+  display: block;
+  font-size: 12px;
 }

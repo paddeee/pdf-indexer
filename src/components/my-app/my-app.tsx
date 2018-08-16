@@ -3,6 +3,8 @@ import { Component, State, Listen } from '@stencil/core';
 
 declare function require(path: string): any;
 const ipcRenderer = require('electron').ipcRenderer;
+require('electron').webFrame.registerURLSchemeAsPrivileged('file');
+//let ipcRenderer;
 
 @Component({
   tag: 'my-app',
@@ -10,28 +12,30 @@ const ipcRenderer = require('electron').ipcRenderer;
 })
 export class MyApp {
 
-  @State() directoryStructure: any;
+  @State() directoryTreeJSX: any;
+  @State() searchResults: any = [];
   @State() preventSingleClick: boolean = false;
   @State() timer: any;
 
-  @State() testStructure: any = [
+  @State() appDirectoryStructure: any;
+  @State() browserDirectoryStructure: any = [
     { name: "Furniture", type: 'directory', items: [
-        { name: "Sofas.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+        { name: "Sofas.pdf", type: 'file', path: "/path/to/Sofas.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
         { name: "Tables & Chairs", type: 'directory', items: [
-            { name: "Tables.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-            { name: "Chairs.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+            { name: "Tables.pdf", type: 'file', path: "/path/to/Tables.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+            { name: "Chairs.pdf", type: 'file', path: "/path/to/Chairs.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
           ]
         },
-        { name: "Occasional Furniture.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+        { name: "Occasional Furniture.pdf", type: 'file', path: "/path/to/Occasional Furniture.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
       ]
     },
-    { name: "Kitchen Units.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+    { name: "Kitchen Units.pdf", type: 'file', path: "/path/to/Kitchen Units.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
     { name: "Decor", type: 'directory', items: [
-        { name: "Bed Linen.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-        { name: "Carpets.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+        { name: "Bed Linen.pdf", type: 'file', path: "/path/to/Bed Linen.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+        { name: "Carpets.pdf", type: 'file', path: "/path/to/Carpets.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
         { name: "Curtains & Blinds", type: 'directory', items: [
-            { name: "Curtains.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-            { name: "Blinds.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+            { name: "Curtains.pdf", type: 'file', path: "/path/to/Curtains.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+            { name: "Blinds.pdf", type: 'file', path: "/path/to/Blinds.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
           ]
         }
       ]
@@ -53,12 +57,20 @@ export class MyApp {
 
       ipcRenderer.on('directory-tree-created', (event, arg) => {
         console.log(event, arg);
-        this.sortDirectories(arg);
-        this.directoryStructure = this.createDirectoryTreeJSX(arg);
-        console.log(this.directoryStructure);
+        this.appDirectoryStructure = arg;
+        this.sortDirectories(this.appDirectoryStructure);
+        this.directoryTreeJSX = this.createDirectoryTreeJSX(this.appDirectoryStructure);
+
+        setTimeout(() => {
+          ipcRenderer.send('app-ready');
+        },2000);
       });
 
       ipcRenderer.send('renderer-ready');
+    } else {
+      this.sortDirectories(this.browserDirectoryStructure);
+      this.directoryTreeJSX = this.createDirectoryTreeJSX(this.browserDirectoryStructure);
+      console.log(this.browserDirectoryStructure);
     }
   }
 
@@ -76,6 +88,17 @@ export class MyApp {
       return -1;
     }
     return 0;
+  }
+
+  flattenHelper(into, item) {
+    if (item == null) {
+      return into;
+    }
+    if (Array.isArray(item)) {
+      return item.reduce(this.flattenHelper.bind(this), into);
+    }
+    into.push(item);
+    return this.flattenHelper(into, item.items);
   }
 
   createDirectoryTreeJSX(directory) {
@@ -114,7 +137,7 @@ export class MyApp {
             if (isFile) {
               itemJSX = (
                 <div>
-                  <span class="item-container" onClick={event => this.handleFileClick(event)} onDblClick={() => this.handleFileDoubleClick()}>
+                  <span class="item-container" onClick={event => this.handleFileClick(event, item)} onDblClick={() => this.handleFileDoubleClick(item)}>
                     <span class="pdf" />{item.name}
                   </span>
                 </div>
@@ -134,10 +157,10 @@ export class MyApp {
     }
   }
 
-  handleFileClick(event) {
+  handleFileClick(event, pdf) {
     this.timer = setTimeout(() => {
       if (!this.preventSingleClick) {
-        this.fileSelected(event);
+        this.fileSelected(event, pdf);
       }
       this.preventSingleClick = false;
     }, 200);
@@ -147,19 +170,24 @@ export class MyApp {
     this.toggleDirectory(event);
   }
 
-  handleFileDoubleClick() {
+  handleFileDoubleClick(pdf) {
     clearTimeout(this.timer);
     this.preventSingleClick = true;
-    this.openFile();
+    this.openFile(pdf.path);
   }
 
-  fileSelected(event) {
+  fileSelected(event, pdf) {
     event.target.classList.add('item-container--selected');
-    console.log('Show Preview of File Selected', event.target);
+    console.log('Show Preview of File Selected', pdf);
   }
 
-  openFile() {
-    console.log('Open File');
+  openFile(path: string) {
+
+    if (ipcRenderer) {
+      ipcRenderer.send('open-file', path);
+    } else {
+      console.log('Browser cannot open file');
+    }
   }
 
   toggleDirectory(event) {
@@ -172,7 +200,6 @@ export class MyApp {
     } else {
       directoryContainer.classList.add('expanded');
     }
-    console.log(directoryContainer, itemGroup);
   }
 
   deSelectItems() {
@@ -181,20 +208,57 @@ export class MyApp {
     console.log('Show Default Preview', event.target);
   }
 
+  searchBarHandler(event: any) {
+    const searchString = event.target.value;
+    this.setFilteredResults(searchString);
+  }
+
+  setFilteredResults(searchString) {
+    const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
+
+    if (searchString === '') {
+      this.searchResults = [];
+      return;
+    }
+
+    this.searchResults = flatStructure.filter(item => {
+      return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
+    });
+  }
+
   render() {
     return [
       <ion-header>
         <ion-toolbar color="primary">
-          <ion-title>PDF Manager</ion-title>
+          <ion-searchbar animated onIonInput={event => this.searchBarHandler(event)}
+          onIonCancel={event => this.searchBarHandler(event)}/>
         </ion-toolbar>
       </ion-header>,
       <ion-content>
         <div class="container">
           <div class="treeview">
-            {this.directoryStructure}
+            {this.directoryTreeJSX}
           </div>
-          <div class="preview-image">
-            <ion-card class="image-card">Preview Image</ion-card>
+          <div class="search-results">
+            <ion-card class="results-card">
+              <ion-card-content>
+                <ion-card-title>Search Results</ion-card-title>
+                  <ion-list>
+                  {this.searchResults.length > 0 ? this.searchResults.map(pdf =>
+                    <ion-item
+                      detail
+                      onClick={event => this.handleFileClick(event, pdf)}
+                      onDblClick={() => this.handleFileDoubleClick(pdf)}>
+                      <span class="pdf" />
+                      <ion-label>
+                        {pdf.name}
+                        <span class="pdf-path">{pdf.path}</span>
+                      </ion-label>
+                    </ion-item>
+                  ) : <p class='no-results'>No results match your search</p>}
+                  </ion-list>
+            </ion-card-content>
+            </ion-card>
           </div>
         </div>
       </ion-content>
