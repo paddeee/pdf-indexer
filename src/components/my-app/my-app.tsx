@@ -1,8 +1,8 @@
 import '@ionic/core';
 import { Component, State, Listen } from '@stencil/core';
-import { Plugins, FilesystemDirectory } from '@capacitor/core';
 
-const { Filesystem } = Plugins;
+declare function require(path: string): any;
+const ipcRenderer = require('electron').ipcRenderer;
 
 @Component({
   tag: 'my-app',
@@ -10,32 +10,33 @@ const { Filesystem } = Plugins;
 })
 export class MyApp {
 
-  @State() directoryStructure: any = [
-    { text: "Furniture", type: 'directory', items: [
-        { text: "Sofas.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-        { text: "Tables & Chairs", type: 'directory', items: [
-            { text: "Tables.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-            { text: "Chairs.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+  @State() directoryStructure: any;
+  @State() preventSingleClick: boolean = false;
+  @State() timer: any;
+
+  @State() testStructure: any = [
+    { name: "Furniture", type: 'directory', items: [
+        { name: "Sofas.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+        { name: "Tables & Chairs", type: 'directory', items: [
+            { name: "Tables.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+            { name: "Chairs.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
           ]
         },
-        { text: "Occasional Furniture.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+        { name: "Occasional Furniture.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
       ]
     },
-    { text: "Kitchen Units.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-    { text: "Decor", type: 'directory', items: [
-        { text: "Bed Linen.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-        { text: "Carpets.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-        { text: "Curtains & Blinds", type: 'directory', items: [
-            { text: "Curtains.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
-            { text: "Blinds.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
+    { name: "Kitchen Units.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+    { name: "Decor", type: 'directory', items: [
+        { name: "Bed Linen.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+        { name: "Carpets.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+        { name: "Curtains & Blinds", type: 'directory', items: [
+            { name: "Curtains.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' },
+            { name: "Blinds.pdf", type: 'file', items: [], thumbImage: 'PathOrDataURI.jpg' }
           ]
         }
       ]
     }
   ];
-
-  @State() preventSingleClick: boolean = false;
-  @State() timer: any;
 
   // Remove selected class from any selected items
   @Listen('body:click')
@@ -44,7 +45,21 @@ export class MyApp {
   }
 
   componentWillLoad() {
-    this.sortDirectories(this.directoryStructure);
+    this.getDirectoryTree();
+  }
+
+  getDirectoryTree() {
+    if (ipcRenderer) {
+
+      ipcRenderer.on('directory-tree-created', (event, arg) => {
+        console.log(event, arg);
+        this.sortDirectories(arg);
+        this.directoryStructure = this.createDirectoryTreeJSX(arg);
+        console.log(this.directoryStructure);
+      });
+
+      ipcRenderer.send('renderer-ready');
+    }
   }
 
   // Used recursively to drill down through directories to group directories
@@ -63,18 +78,6 @@ export class MyApp {
     return 0;
   }
 
-  async readDirectory() {
-    try {
-      const ret = await Filesystem.readdir({
-        path: 'CPSFiles',
-        directory: FilesystemDirectory.Documents
-      });
-      console.log(ret);
-    } catch(e) {
-      console.error('Unable to read dir', e);
-    }
-  }
-
   createDirectoryTreeJSX(directory) {
     const directoryLength = directory.length;
 
@@ -90,9 +93,9 @@ export class MyApp {
             if (isCollapsibleDirectory) {
               itemJSX = (
                 <div class="collapsible-directory" onClick={event => this.handleDirectoryClick(event)}>
-                  <ion-icon name="arrow-dropright"></ion-icon>
+                  <img src="./assets/images/md-arrow-dropright.svg" />
                   <span class="item-container">
-                    <span class="directory" />{item.text}
+                    <span class="directory" />{item.name}
                   </span>
                 </div>
               )
@@ -102,7 +105,7 @@ export class MyApp {
               itemJSX = (
                 <div>
                   <span class="item-container">
-                    <span class="directory" />{item.text}
+                    <span class="directory" />{item.name}
                   </span>
                 </div>
               )
@@ -112,14 +115,14 @@ export class MyApp {
               itemJSX = (
                 <div>
                   <span class="item-container" onClick={event => this.handleFileClick(event)} onDblClick={() => this.handleFileDoubleClick()}>
-                    <span class="pdf" />{item.text}
+                    <span class="pdf" />{item.name}
                   </span>
                 </div>
               )
             }
 
             return (
-              <li class="expanded">
+              <li>
                 {itemJSX}
                 {this.createDirectoryTreeJSX(item.items)}
               </li>
@@ -182,16 +185,13 @@ export class MyApp {
     return [
       <ion-header>
         <ion-toolbar color="primary">
-          <ion-title>Home</ion-title>
+          <ion-title>PDF Manager</ion-title>
         </ion-toolbar>
       </ion-header>,
       <ion-content>
         <div class="container">
           <div class="treeview">
-            <p>
-              <ion-button onClick={() => this.readDirectory()}>Parse Files</ion-button>
-            </p>
-            {this.createDirectoryTreeJSX(this.directoryStructure)}
+            {this.directoryStructure}
           </div>
           <div class="preview-image">
             <ion-card class="image-card">Preview Image</ion-card>

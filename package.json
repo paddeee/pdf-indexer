@@ -1,8 +1,9 @@
 {
   "name": "@ionic/pwa-toolkit",
+  "productName": "PDF Manager",
   "private": true,
   "version": "0.0.1",
-  "description": "Ionic PWA Toolkit",
+  "description": "Search and view PDFs",
   "files": [
     "dist/"
   ],
@@ -11,7 +12,9 @@
     "start": "stencil build --dev --watch --serve",
     "start.sw": "npm run start --service-worker",
     "test": "jest",
-    "test.watch": "jest --watch"
+    "test.watch": "jest --watch",
+    "package-mac": "electron-packager . --overwrite --platform=darwin --arch=x64 --icon=assets/icon/SITFonline.ico.icns --prune=true --out=release-builds",
+    "package-win": "electron-packager . electron-tutorial-app --overwrite --asar=true --platform=win32 --arch=ia32 --icon=assets/icon/SITFonline.ico --prune=true --out=release-builds --version-string.CompanyName=Evidential --version-string.FileDescription=CE --version-string.ProductName=\"PDF Manager\""
   },
   "dependencies": {
     "@capacitor/cli": "^1.0.0-beta.4",
@@ -21,7 +24,10 @@
   },
   "devDependencies": {
     "@types/jest": "^22.2.2",
-    "jest": "^22.4.3"
+    "electron-packager": "^12.1.0",
+    "electron": "latest",
+    "jest": "^22.4.3",
+    "os-path-plugin": "^0.0.5"
   },
   "repository": {
     "type": "git",

@@ -17,6 +17,8 @@
   border-right: 1px solid #eee;
   flex: 1;
   font-size: 14px;
+  overflow: auto;
+  padding: 0 0 100px;
 }
 
 .treeview > ul {
@@ -42,12 +44,13 @@ li {
   cursor: pointer;
 }
 
-.ion-icon {
+img {
   cursor: pointer;
-  font-size: 16px;
+  height: 16px;
+  width: 16px;
 }
 
-.expanded > .collapsible-directory ion-icon {
+.expanded > .collapsible-directory img {
   transform: rotate(45deg);
 }
 
@@ -60,6 +63,7 @@ li {
   border-style: solid;
   border-radius: 2px;
   border-width: 1px;
+  cursor: pointer;
   display: inline-block;
   margin: 1px 0 1px .3333em;
   padding: .429em .6667em .429em .5833em;
@@ -75,7 +79,7 @@ li {
 }
 
 .directory {
-  background-image: url(/assets/images/treeview-sprite.png);
+  background-image: url(./assets/images/treeview-sprite.png);
   background-position: 0 -16px;
   display: inline-block;
   vertical-align: top;
@@ -85,7 +89,7 @@ li {
 }
 
 .pdf {
-  background-image: url(/assets/images/treeview-sprite.png);
+  background-image: url(./assets/images/treeview-sprite.png);
   background-position: 0 -32px;
   display: inline-block;
   width: 16px;
