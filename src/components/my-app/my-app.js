@@ -154,7 +154,6 @@ let MyApp = class MyApp {
     }
     toggleDirectory(event) {
         const directoryContainer = event.currentTarget.parentNode;
-        const itemGroup = event.currentTarget.nextSibling;
         const isExpanded = directoryContainer.classList.contains('expanded');
         if (isExpanded) {
             directoryContainer.classList.remove('expanded');

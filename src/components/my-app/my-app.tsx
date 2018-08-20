@@ -1,7 +1,7 @@
 import '@ionic/core';
 import { Component, State, Listen } from '@stencil/core';
 
-declare function require(path: string): any;
+declare var require: any;
 const ipcRenderer = require('electron').ipcRenderer;
 require('electron').webFrame.registerURLSchemeAsPrivileged('file');
 //let ipcRenderer;
@@ -192,7 +192,6 @@ export class MyApp {
 
   toggleDirectory(event) {
     const directoryContainer = event.currentTarget.parentNode;
-    const itemGroup = event.currentTarget.nextSibling;
     const isExpanded = directoryContainer.classList.contains('expanded');
 
     if (isExpanded) {
