@@ -1,13 +1,18 @@
 .container {
-  display: flex;
+  display: grid;
+  grid-template-columns: 250px auto 300px;
   height: 100%;
 }
 
 .search-results {
   display: flex;
   justify-content: center;
-  padding: 10px 0 0;
-  flex: 2;
+  max-width: 480px;
+  padding: 10px 20px 0;
+}
+
+.search-results ion-label {
+  font-size: 14px;
 }
 
 h1 {
@@ -16,7 +21,6 @@ h1 {
 }
 
 .results-card {
-  width: 80%;
   height: 80vh;
   overflow: auto;
 }
@@ -33,7 +37,6 @@ ion-label.sc-ion-label-md-h {
 
 .treeview {
   border-right: 1px solid #eee;
-  flex: 1;
   font-size: 14px;
   overflow: auto;
   padding: 20px 0 100px;
@@ -119,4 +122,15 @@ img {
 .pdf-path {
   display: block;
   font-size: 12px;
+}
+
+.preview-holder {
+  width: 300px;
+  padding: 20px 20px 0 0;
+}
+
+.preview-holder > img {
+  border: 1px solid #dcdcdc;
+  height: initial;
+  width: 300px;
 }

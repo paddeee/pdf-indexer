@@ -1,5 +1,4 @@
-import packager from 'electron-packager';
-import rebuild from 'electron-rebuild';
+const packager = require('electron-packager');
 
 const buildVersion = '1.0.0';
 const electronVersion = '2.0.7';
@@ -16,14 +15,7 @@ const options = {
   'out': '/Users/ODonnell/OPCircus/Builds',
   'overwrite': true,
   'platform': 'darwin',
-  'version': electronVersion,
-  'afterCopy': [(buildPath, '2.0.7', 'darwin', 'all') => {
-    rebuild({ buildPath, electronVersion, 'all' })
-      .then(() => {
-        console.log('Electron Rebuild successful');
-      })
-      .catch(error => console.log(error));
-  }]
+  'version': electronVersion
 }
 
 packager(options)

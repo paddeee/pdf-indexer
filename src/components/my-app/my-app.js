@@ -12,26 +12,29 @@ require('electron').webFrame.registerURLSchemeAsPrivileged('file');
 let MyApp = class MyApp {
     //let ipcRenderer;
     constructor() {
+        this.SPINNER_PATH = './assets/images/spinner.gif';
+        this.PDF_PLACEHOLDER_PATH = './assets/images/pdf-placeholder.png';
         this.searchResults = [];
         this.preventSingleClick = false;
+        this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
         this.browserDirectoryStructure = [
             { name: "Furniture", type: 'directory', items: [
-                    { name: "Sofas.pdf", type: 'file', path: "/path/to/Sofas.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+                    { name: "Sofas.pdf", type: 'file', path: "/path/to/Sofas.pdf", items: [] },
                     { name: "Tables & Chairs", type: 'directory', items: [
-                            { name: "Tables.pdf", type: 'file', path: "/path/to/Tables.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
-                            { name: "Chairs.pdf", type: 'file', path: "/path/to/Chairs.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
+                            { name: "Tables.pdf", type: 'file', path: "/path/to/Tables.pdf", items: [] },
+                            { name: "Chairs.pdf", type: 'file', path: "/path/to/Chairs.pdf", items: [] }
                         ]
                     },
-                    { name: "Occasional Furniture.pdf", type: 'file', path: "/path/to/Occasional Furniture.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
+                    { name: "Occasional Furniture.pdf", type: 'file', path: "/path/to/Occasional Furniture.pdf", items: [] }
                 ]
             },
-            { name: "Kitchen Units.pdf", type: 'file', path: "/path/to/Kitchen Units.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+            { name: "Kitchen Units.pdf", type: 'file', path: "/path/to/Kitchen Units.pdf", items: [] },
             { name: "Decor", type: 'directory', items: [
-                    { name: "Bed Linen.pdf", type: 'file', path: "/path/to/Bed Linen.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
-                    { name: "Carpets.pdf", type: 'file', path: "/path/to/Carpets.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
+                    { name: "Bed Linen.pdf", type: 'file', path: "/path/to/Bed Linen.pdf", items: [] },
+                    { name: "Carpets.pdf", type: 'file', path: "/path/to/Carpets.pdf", items: [] },
                     { name: "Curtains & Blinds", type: 'directory', items: [
-                            { name: "Curtains.pdf", type: 'file', path: "/path/to/Curtains.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' },
-                            { name: "Blinds.pdf", type: 'file', path: "/path/to/Blinds.pdf", items: [], thumbImage: 'PathOrDataURI.jpg' }
+                            { name: "Curtains.pdf", type: 'file', path: "/path/to/Curtains.pdf", items: [] },
+                            { name: "Blinds.pdf", type: 'file', path: "/path/to/Blinds.pdf", items: [], }
                         ]
                     }
                 ]
@@ -40,10 +43,14 @@ let MyApp = class MyApp {
     }
     // Remove selected class from any selected items
     handleBodyClick() {
-        this.deSelectItems();
+        //this.deSelectItems();
     }
     componentWillLoad() {
         this.getDirectoryTree();
+        ipcRenderer.on('preview-generated', (event, arg) => {
+            console.log(event);
+            this.previewDataURI = arg;
+        });
     }
     getDirectoryTree() {
         if (ipcRenderer) {
@@ -54,7 +61,7 @@ let MyApp = class MyApp {
                 this.directoryTreeJSX = this.createDirectoryTreeJSX(this.appDirectoryStructure);
                 setTimeout(() => {
                     ipcRenderer.send('app-ready');
-                }, 2000);
+                }, 3000);
             });
             ipcRenderer.send('renderer-ready');
         }
@@ -133,6 +140,8 @@ let MyApp = class MyApp {
         }, 200);
     }
     handleDirectoryClick(event) {
+        this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+        this.deSelectItems();
         this.toggleDirectory(event);
     }
     handleFileDoubleClick(pdf) {
@@ -141,15 +150,25 @@ let MyApp = class MyApp {
         this.openFile(pdf.path);
     }
     fileSelected(event, pdf) {
+        this.previewDataURI = this.SPINNER_PATH;
+        this.deSelectItems();
         event.target.classList.add('item-container--selected');
-        console.log('Show Preview of File Selected', pdf);
+        if (ipcRenderer) {
+            // In setTimeout as renderer sends and blocks dom updating to show spinner quick enough
+            setTimeout(() => {
+                ipcRenderer.send('get-preview', pdf.path);
+            }, 500);
+        }
+        else {
+            console.warn('Browser cannot get thumbnail');
+        }
     }
     openFile(path) {
         if (ipcRenderer) {
             ipcRenderer.send('open-file', path);
         }
         else {
-            console.log('Browser cannot open file');
+            console.warn('Browser cannot open file');
         }
     }
     toggleDirectory(event) {
@@ -165,7 +184,6 @@ let MyApp = class MyApp {
     deSelectItems() {
         const selectedItems = Array.from(document.querySelectorAll('.item-container--selected'));
         selectedItems.forEach(item => item.classList.remove('item-container--selected'));
-        console.log('Show Default Preview', event.target);
     }
     searchBarHandler(event) {
         const searchString = event.target.value;
@@ -197,7 +215,9 @@ let MyApp = class MyApp {
                                     h("span", { class: "pdf" }),
                                     h("ion-label", null,
                                         pdf.name,
-                                        h("span", { class: "pdf-path" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search")))))))
+                                        h("span", { class: "pdf-path" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search"))))),
+                    h("div", { class: "preview-holder" },
+                        h("img", { src: this.previewDataURI }))))
         ];
     }
 };
@@ -213,6 +233,9 @@ __decorate([
 __decorate([
     State()
 ], MyApp.prototype, "timer", void 0);
+__decorate([
+    State()
+], MyApp.prototype, "previewDataURI", void 0);
 __decorate([
     State()
 ], MyApp.prototype, "appDirectoryStructure", void 0);

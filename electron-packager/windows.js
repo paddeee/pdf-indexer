@@ -1,5 +1,5 @@
-import packager from 'electron-packager';
-import rebuild from 'electron-rebuild';
+const packager = require('electron-packager');
+const rebuild = require('electron-rebuild');
 
 const buildVersion = '1.0.0';
 const electronVersion = '2.0.7';
