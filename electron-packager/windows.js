@@ -1,5 +1,4 @@
 const packager = require('electron-packager');
-const rebuild = require('electron-rebuild');
 
 const buildVersion = '1.0.0';
 const electronVersion = '2.0.7';
@@ -22,13 +21,8 @@ const options = {
     'OriginalFilename': 'OpCircus',
     'ProductName': 'OpCircus',
     'InternalName': 'OpCircus'
-  },
-  'afterCopy': [(buildPath, '2.0.7', 'win32', 'x64') => {
-    rebuild({ buildPath, electronVersion, 'x64' })
-      .then(() => console.log('Electron Rebuild successful'))
-      .catch((error) => console.log(error));
-  }]
-}
+  }
+};
 
 packager(options)
 .then(appPaths => {

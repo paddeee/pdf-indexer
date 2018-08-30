@@ -47,10 +47,6 @@ let MyApp = class MyApp {
     }
     componentWillLoad() {
         this.getDirectoryTree();
-        ipcRenderer.on('preview-generated', (event, arg) => {
-            console.log(event);
-            this.previewDataURI = arg;
-        });
     }
     getDirectoryTree() {
         if (ipcRenderer) {
@@ -121,7 +117,7 @@ let MyApp = class MyApp {
                     }
                     if (isFile) {
                         itemJSX = (h("div", null,
-                            h("span", { class: "item-container", onClick: event => this.handleFileClick(event, item), onDblClick: () => this.handleFileDoubleClick(item) },
+                            h("span", { class: "item-container", onClick: () => this.handleFileClick(item), onDblClick: () => this.handleFileDoubleClick(item) },
                                 h("span", { class: "pdf" }),
                                 item.name)));
                     }
@@ -131,10 +127,10 @@ let MyApp = class MyApp {
                 })));
         }
     }
-    handleFileClick(event, pdf) {
+    handleFileClick(pdf) {
         this.timer = setTimeout(() => {
             if (!this.preventSingleClick) {
-                this.fileSelected(event, pdf);
+                this.openFile(pdf.path);
             }
             this.preventSingleClick = false;
         }, 200);
@@ -148,20 +144,6 @@ let MyApp = class MyApp {
         clearTimeout(this.timer);
         this.preventSingleClick = true;
         this.openFile(pdf.path);
-    }
-    fileSelected(event, pdf) {
-        this.previewDataURI = this.SPINNER_PATH;
-        this.deSelectItems();
-        event.target.classList.add('item-container--selected');
-        if (ipcRenderer) {
-            // In setTimeout as renderer sends and blocks dom updating to show spinner quick enough
-            setTimeout(() => {
-                ipcRenderer.send('get-preview', pdf.path);
-            }, 500);
-        }
-        else {
-            console.warn('Browser cannot get thumbnail');
-        }
     }
     openFile(path) {
         if (ipcRenderer) {
@@ -211,13 +193,11 @@ let MyApp = class MyApp {
                         h("ion-card", { class: "results-card" },
                             h("ion-card-content", null,
                                 h("ion-card-title", null, "Search Results"),
-                                h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(pdf => h("ion-item", { detail: true, onClick: event => this.handleFileClick(event, pdf), onDblClick: () => this.handleFileDoubleClick(pdf) },
+                                h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(pdf => h("ion-item", { detail: true, onClick: () => this.handleFileClick(pdf), onDblClick: () => this.handleFileDoubleClick(pdf) },
                                     h("span", { class: "pdf" }),
                                     h("ion-label", null,
                                         pdf.name,
-                                        h("span", { class: "pdf-path" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search"))))),
-                    h("div", { class: "preview-holder" },
-                        h("img", { src: this.previewDataURI }))))
+                                        h("span", { class: "pdf-path" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search")))))))
         ];
     }
 };

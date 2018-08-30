@@ -54,11 +54,6 @@ export class MyApp {
 
   componentWillLoad() {
     this.getDirectoryTree();
-
-    ipcRenderer.on('preview-generated', (event, arg) => {
-      console.log(event);
-      this.previewDataURI = arg;
-    });
   }
 
   getDirectoryTree() {
@@ -146,7 +141,7 @@ export class MyApp {
             if (isFile) {
               itemJSX = (
                 <div>
-                  <span class="item-container" onClick={event => this.handleFileClick(event, item)} onDblClick={() => this.handleFileDoubleClick(item)}>
+                  <span class="item-container" onClick={() => this.handleFileClick(item)} onDblClick={() => this.handleFileDoubleClick(item)}>
                     <span class="pdf" />{item.name}
                   </span>
                 </div>
@@ -166,10 +161,10 @@ export class MyApp {
     }
   }
 
-  handleFileClick(event, pdf) {
+  handleFileClick(pdf) {
     this.timer = setTimeout(() => {
       if (!this.preventSingleClick) {
-        this.fileSelected(event, pdf);
+        this.openFile(pdf.path);
       }
       this.preventSingleClick = false;
     }, 200);
@@ -185,21 +180,6 @@ export class MyApp {
     clearTimeout(this.timer);
     this.preventSingleClick = true;
     this.openFile(pdf.path);
-  }
-
-  fileSelected(event, pdf) {
-    this.previewDataURI = this.SPINNER_PATH;
-    this.deSelectItems();
-    event.target.classList.add('item-container--selected');
-
-    if (ipcRenderer) {
-      // In setTimeout as renderer sends and blocks dom updating to show spinner quick enough
-      setTimeout(() => {
-        ipcRenderer.send('get-preview', pdf.path);
-      }, 500);
-    } else {
-      console.warn('Browser cannot get thumbnail');
-    }
   }
 
   openFile(path: string) {
@@ -266,7 +246,7 @@ export class MyApp {
                   {this.searchResults.length > 0 ? this.searchResults.map(pdf =>
                     <ion-item
                       detail
-                      onClick={event => this.handleFileClick(event, pdf)}
+                      onClick={() => this.handleFileClick(pdf)}
                       onDblClick={() => this.handleFileDoubleClick(pdf)}>
                       <span class="pdf" />
                       <ion-label>
@@ -278,9 +258,6 @@ export class MyApp {
                   </ion-list>
             </ion-card-content>
             </ion-card>
-          </div>
-          <div class="preview-holder">
-            <img src={this.previewDataURI} />
           </div>
         </div>
       </ion-content>

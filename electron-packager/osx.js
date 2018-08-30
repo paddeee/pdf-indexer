@@ -16,7 +16,7 @@ const options = {
   'overwrite': true,
   'platform': 'darwin',
   'version': electronVersion
-}
+};
 
 packager(options)
 .then(appPaths => {
