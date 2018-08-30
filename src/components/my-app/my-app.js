@@ -6,11 +6,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import '@ionic/core';
 import { Component, State, Listen } from '@stencil/core';
-const ipcRenderer = require('electron').ipcRenderer;
 require('electron').webFrame.registerURLSchemeAsPrivileged('file');
-//let ipcRenderer;
+const ipcRenderer = require('electron').ipcRenderer;
 let MyApp = class MyApp {
-    //let ipcRenderer;
     constructor() {
         this.SPINNER_PATH = './assets/images/spinner.gif';
         this.PDF_PLACEHOLDER_PATH = './assets/images/pdf-placeholder.png';
@@ -47,9 +45,29 @@ let MyApp = class MyApp {
     }
     componentWillLoad() {
         this.getDirectoryTree();
-        ipcRenderer.on('preview-generated', (event, arg) => {
+        ipcRenderer.on('preview-generated', (event, data) => {
             console.log(event);
-            this.previewDataURI = arg;
+            const scale = 1;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            pdfjsLib.getDocument({ data: data }).then(doc => {
+                doc.getPage(1).then(page => {
+                    const viewport = page.getViewport(scale);
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    const renderer = {
+                        canvasContext: ctx,
+                        viewport: viewport
+                    };
+                    page.render(renderer).then(() => {
+                        ctx.globalCompositeOperation = 'destination-over';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        this.previewDataURI = canvas.toDataURL('image/png');
+                    });
+                });
+            });
+            //this.previewDataURI = arg;
         });
     }
     getDirectoryTree() {

@@ -22,12 +22,7 @@ const options = {
     'OriginalFilename': 'OpCircus',
     'ProductName': 'OpCircus',
     'InternalName': 'OpCircus'
-  },
-  'afterCopy': [(buildPath, '2.0.7', 'win32', 'x64') => {
-    rebuild({ buildPath, electronVersion, 'x64' })
-      .then(() => console.log('Electron Rebuild successful'))
-      .catch((error) => console.log(error));
-  }]
+  }
 }
 
 packager(options)
