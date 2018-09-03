@@ -5,7 +5,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 import '@ionic/core';
-import { Component, State, Listen } from '@stencil/core';
+import { Component, State } from '@stencil/core';
 require('electron').webFrame.registerURLSchemeAsPrivileged('file');
 const ipcRenderer = require('electron').ipcRenderer;
 let MyApp = class MyApp {
@@ -14,6 +14,7 @@ let MyApp = class MyApp {
         this.PDF_PLACEHOLDER_PATH = './assets/images/pdf-placeholder.png';
         this.searchResults = [];
         this.preventSingleClick = false;
+        this.textIndexComplete = false;
         this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
         this.browserDirectoryStructure = [
             { name: "Furniture", type: 'directory', items: [
@@ -39,35 +40,33 @@ let MyApp = class MyApp {
             }
         ];
     }
-    // Remove selected class from any selected items
-    handleBodyClick() {
-        //this.deSelectItems();
-    }
     componentWillLoad() {
         this.getDirectoryTree();
         ipcRenderer.on('preview-generated', (event, data) => {
             console.log(event);
-            const scale = 1;
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            pdfjsLib.getDocument({ data: data }).then(doc => {
-                doc.getPage(1).then(page => {
-                    const viewport = page.getViewport(scale);
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-                    const renderer = {
-                        canvasContext: ctx,
-                        viewport: viewport
-                    };
-                    page.render(renderer).then(() => {
-                        ctx.globalCompositeOperation = 'destination-over';
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        this.previewDataURI = canvas.toDataURL('image/png');
-                    });
+            this.createPreviewImage(data);
+        });
+    }
+    createPreviewImage(data) {
+        const scale = 1;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        pdfjsLib.getDocument({ data: data }).then(doc => {
+            doc.getPage(1).then(page => {
+                const viewport = page.getViewport(scale);
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                const renderer = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                page.render(renderer).then(() => {
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    this.previewDataURI = canvas.toDataURL('image/png');
                 });
             });
-            //this.previewDataURI = arg;
         });
     }
     getDirectoryTree() {
@@ -92,27 +91,6 @@ let MyApp = class MyApp {
     // Used recursively to drill down through directories to group directories
     sortDirectories(directories) {
         directories.sort(this.compareDirectoriesHelper.bind(this));
-    }
-    compareDirectoriesHelper(a, b) {
-        if (a.items.length < b.items.length) {
-            this.sortDirectories(b.items);
-            return 1;
-        }
-        else if (a.items.length > b.items.length) {
-            this.sortDirectories(a.items);
-            return -1;
-        }
-        return 0;
-    }
-    flattenHelper(into, item) {
-        if (item == null) {
-            return into;
-        }
-        if (Array.isArray(item)) {
-            return item.reduce(this.flattenHelper.bind(this), into);
-        }
-        into.push(item);
-        return this.flattenHelper(into, item.items);
     }
     createDirectoryTreeJSX(directory) {
         const directoryLength = directory.length;
@@ -139,7 +117,7 @@ let MyApp = class MyApp {
                     }
                     if (isFile) {
                         itemJSX = (h("div", null,
-                            h("span", { class: "item-container", onClick: event => this.handleFileClick(event, item), onDblClick: () => this.handleFileDoubleClick(item) },
+                            h("span", { class: "file-item item-container", onClick: event => this.handleFileClick(event, item), onDblClick: () => this.handleFileDoubleClick(item) },
                                 h("span", { class: "pdf" }),
                                 item.name)));
                     }
@@ -159,6 +137,7 @@ let MyApp = class MyApp {
     }
     handleDirectoryClick(event) {
         this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+        this.selectedFile = null;
         this.deSelectItems();
         this.toggleDirectory(event);
     }
@@ -168,9 +147,14 @@ let MyApp = class MyApp {
         this.openFile(pdf.path);
     }
     fileSelected(event, pdf) {
+        const currentFilePath = this.selectedFile ? this.selectedFile.path : '';
+        if (pdf.path === currentFilePath) {
+            return;
+        }
         this.previewDataURI = this.SPINNER_PATH;
         this.deSelectItems();
-        event.target.classList.add('item-container--selected');
+        event.target.closest('.file-item').classList.add('item-container--selected');
+        this.selectedFile = pdf;
         if (ipcRenderer) {
             // In setTimeout as renderer sends and blocks dom updating to show spinner quick enough
             setTimeout(() => {
@@ -182,7 +166,7 @@ let MyApp = class MyApp {
         }
     }
     openFile(path) {
-        if (ipcRenderer) {
+        if (ipcRenderer && this.selectedFile) {
             ipcRenderer.send('open-file', path);
         }
         else {
@@ -209,19 +193,67 @@ let MyApp = class MyApp {
     }
     setFilteredResults(searchString) {
         const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
-        if (searchString === '') {
+        const resultsArray = [];
+        if (searchString === '' || searchString.length < 3) {
             this.searchResults = [];
+            this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+            this.selectedFile = null;
             return;
         }
-        this.searchResults = flatStructure.filter(item => {
-            return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
+        flatStructure.forEach(item => {
+            const newItem = {
+                name: item.name,
+                pdf: item,
+                pageMatches: []
+            };
+            if (item.type === 'file') {
+                item.textContent.forEach((page, index) => {
+                    const pageObject = {
+                        page: index + 1,
+                        textMatches: 0
+                    };
+                    const matchingSegments = page.filter(textSegment => {
+                        return textSegment.toLowerCase().includes(searchString.toLowerCase());
+                    });
+                    if (matchingSegments.length > 0) {
+                        pageObject.textMatches = matchingSegments.length;
+                        newItem.pageMatches.push(pageObject);
+                    }
+                });
+                if (newItem.pageMatches.length > 0) {
+                    resultsArray.push(newItem);
+                }
+            }
         });
+        this.searchResults = resultsArray;
+    }
+    compareDirectoriesHelper(a, b) {
+        if (a.items.length < b.items.length) {
+            this.sortDirectories(b.items);
+            return 1;
+        }
+        else if (a.items.length > b.items.length) {
+            this.sortDirectories(a.items);
+            return -1;
+        }
+        return 0;
+    }
+    flattenHelper(into, item) {
+        if (item == null) {
+            return into;
+        }
+        if (Array.isArray(item)) {
+            return item.reduce(this.flattenHelper.bind(this), into);
+        }
+        into.push(item);
+        return this.flattenHelper(into, item.items);
     }
     render() {
         return [
             h("ion-header", null,
-                h("ion-toolbar", { color: "primary" },
-                    h("ion-searchbar", { animated: true, onIonInput: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }))),
+                h("ion-toolbar", { color: "primary" }, this.textIndexComplete ?
+                    h("ion-searchbar", { animated: true, placeholder: "Minimum 3 characters", onIonInput: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
+                    h("div", null, "Indexing PDFs.."))),
             h("ion-content", null,
                 h("div", { class: "container" },
                     h("div", { class: "treeview" }, this.directoryTreeJSX),
@@ -229,12 +261,17 @@ let MyApp = class MyApp {
                         h("ion-card", { class: "results-card" },
                             h("ion-card-content", null,
                                 h("ion-card-title", null, "Search Results"),
-                                h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(pdf => h("ion-item", { detail: true, onClick: event => this.handleFileClick(event, pdf), onDblClick: () => this.handleFileDoubleClick(pdf) },
+                                h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(match => h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, match.pdf), onDblClick: () => this.handleFileDoubleClick(match.pdf) },
                                     h("span", { class: "pdf" }),
                                     h("ion-label", null,
-                                        pdf.name,
-                                        h("span", { class: "pdf-path" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search"))))),
-                    h("div", { class: "preview-holder" },
+                                        match.name,
+                                        match.pageMatches.map(pageMatch => h("div", { class: "pdf-match" },
+                                            "Page ",
+                                            h("strong", null, pageMatch.page),
+                                            " contains ",
+                                            h("strong", null, pageMatch.textMatches),
+                                            " matches"))))) : h("p", { class: 'no-results' }, "No results match your search"))))),
+                    h("div", { class: "preview-holder", onClick: () => this.openFile(this.selectedFile.path) },
                         h("img", { src: this.previewDataURI }))))
         ];
     }
@@ -250,19 +287,22 @@ __decorate([
 ], MyApp.prototype, "preventSingleClick", void 0);
 __decorate([
     State()
+], MyApp.prototype, "textIndexComplete", void 0);
+__decorate([
+    State()
 ], MyApp.prototype, "timer", void 0);
 __decorate([
     State()
 ], MyApp.prototype, "previewDataURI", void 0);
 __decorate([
     State()
+], MyApp.prototype, "selectedFile", void 0);
+__decorate([
+    State()
 ], MyApp.prototype, "appDirectoryStructure", void 0);
 __decorate([
     State()
 ], MyApp.prototype, "browserDirectoryStructure", void 0);
-__decorate([
-    Listen('body:click')
-], MyApp.prototype, "handleBodyClick", null);
 MyApp = __decorate([
     Component({
         tag: 'my-app',

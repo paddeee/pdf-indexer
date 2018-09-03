@@ -119,9 +119,14 @@ img {
   margin-right: 3px;
 }
 
-.pdf-path {
+.pdf-match {
+  color: #808080;
   display: block;
   font-size: 12px;
+}
+
+.pdf-match.item-container--selected {
+  background-color: transparent;
 }
 
 .preview-holder {

@@ -1,0 +1,6 @@
+{
+  "appId": "com.evidential.pdfindexer",
+  "appName": "PDF Indexer",
+  "bundledWebRuntime": false,
+  "webDir": "www"
+}

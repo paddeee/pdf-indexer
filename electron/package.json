@@ -1,0 +1,22 @@
+{
+  "name": "pdf-manager",
+  "version": "1.0.0",
+  "description": "PDF Manager",
+  "main": "index.js",
+  "scripts": {
+    "electron:start": "electron ./"
+  },
+  "dependencies": {
+    "@capacitor/electron": "^1.0.0-alpha.28",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "electron": "^1.8.2"
+  },
+  "keywords": [
+    "capacitor",
+    "electron"
+  ],
+  "author": "Patrick ODonnell",
+  "license": "ISC"
+}

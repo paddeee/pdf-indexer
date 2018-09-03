@@ -13,7 +13,7 @@ log.txt
 *.sublime-workspace
 
 .stencil/
-electron/
+electron/app/
 .idea/
 .vscode/
 .sass-cache/

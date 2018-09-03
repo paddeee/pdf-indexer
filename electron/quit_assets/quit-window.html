@@ -1,0 +1,184 @@
+<!doctype html>
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<html lang="">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="generator" content="Electronic Presentation of Evidence" />
+  <meta name="robots" content="noindex" />
+  <title>Electronic Presentation of Evidence</title>
+  <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+
+  <!-- Chrome for Android theme color -->
+  <meta name="theme-color" content="#303F9F">
+  <style>
+
+    html {
+      background: #fff;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #333;
+      -webkit-user-select: none;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .logo {
+      text-align: center;
+      width: 100vw;
+    }
+
+    .logo img {
+      width: 100%;
+    }
+
+    @-webkit-keyframes spin {
+       0% {
+         -webkit-transform:rotate(0deg);
+         opacity: 0;
+       }
+       15% {
+         opacity: 1;
+       }
+       25% {
+         -webkit-transform:rotate(270deg);
+         opacity: 1;
+       }
+       50% {
+         -webkit-transform:rotate(960deg);
+         opacity: 1;
+       }
+       80% {
+         -webkit-transform:rotate(1300deg);
+
+         opacity: 1;
+       }
+       100% {
+         -webkit-transform:rotate(1820deg);
+         opacity: 0;
+       }
+     }
+
+    @keyframes spin {
+      0% {
+        transform:rotate(0deg);
+        opacity: 0;
+      }
+      15% {
+        opacity: 1;
+      }
+      25% {
+        transform:rotate(270deg);
+        opacity: 1;
+      }
+      50% {
+        transform:rotate(960deg);
+        opacity: 1;
+      }
+      80% {
+        transform:rotate(1300deg);
+
+        opacity: 1;
+      }
+      100% {
+        transform:rotate(1820deg);
+        opacity: 0;
+      }
+    }
+
+    .loading {
+      height: 44px;
+      left: 50%;
+      margin-left: -22px;
+      position: absolute;
+      top: 146px;
+      width: 44px;
+    }
+
+    .loading .animation {
+      -webkit-animation: spin 10s linear 0s infinite;
+      -moz-animation: spin 10s linear 0s infinite;
+      animation: spin 10s linear 0s infinite;
+      -webkit-transform: translate3d(0, 0, 0);
+      -moz-transform: translate3d(0, 0, 0);
+      transform: translate3d(0, 0, 0);
+      -webkit-perspective: 1000;
+      -moz-perspective: 1000;
+      perspective: 1000;
+      opacity: 0;
+    }
+
+    .loading .animation:nth-child(2) {
+      -webkit-animation-delay: 250ms;
+      -moz-animation-delay: 250ms;
+      animation-delay: 250ms;
+    }
+    .loading .animation:nth-child(3) {
+      -webkit-animation-delay: 500ms;
+      -moz-animation-delay: 500ms;
+      animation-delay: 500ms;
+    }
+    .loading .animation:nth-child(4) {
+      -webkit-animation-delay: 750ms;
+      -moz-animation-delay: 750ms;
+      animation-delay: 750ms;
+    }
+    .loading .animation:nth-child(5) {
+      -webkit-animation-delay: 1000ms;
+      -moz-animation-delay: 1000ms;
+      animation-delay: 1000ms;
+    }
+    .loading .circle {
+      background: none repeat scroll 0 0 #000;
+      border-radius: 100% 100% 100% 100%;
+      height: 4px;
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 4px;
+    }
+    .loading .circle.two {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .loading .circle.three {
+      background: rgba(0, 0, 0, 0.6);
+    }
+    .loading .circle.four {
+      background: rgba(0, 0, 0, 0.4);
+    }
+    .loading .circle.five {
+      background: rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="logo">
+    <img src="closing-screen.jpg"/>
+  </div>
+
+  <div class="loading">
+    <div class="animation"><div class="circle one"></div></div>
+    <div class="animation"><div class="circle two"></div></div>
+    <div class="animation"><div class="circle three"></div></div>
+    <div class="animation"><div class="circle four"></div></div>
+    <div class="animation"><div class="circle five"></div></div>
+  </div>
+</body>
+
+</html>
