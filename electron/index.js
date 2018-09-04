@@ -177,16 +177,16 @@ function directoryTreeToObj(dir, done) {
         else {
           if (path.extname(file).toLowerCase() === '.pdf') {
 
-            getPDFTextContent(file).then((textContent) => {
+            //getPDFTextContent(file).then((textContent) => {
 
               results.push({
                 type: 'file',
                 name: path.basename(file),
                 items: [],
-                path: file,
-                textContent: textContent
+                path: file/*,
+                textContent: textContent*/
               });
-            });
+            //});
           }
           if (!--pending)
             done(null, results);

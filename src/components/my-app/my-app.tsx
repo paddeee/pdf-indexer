@@ -19,7 +19,8 @@ export class MyApp {
   @State() directoryTreeJSX: any;
   @State() searchResults: any = [];
   @State() preventSingleClick: boolean = false;
-  @State() textIndexComplete: boolean = false;
+  @State() textIndexComplete: boolean = true;
+  @State() hideSearchResults: boolean = true;
   @State() timer: any;
   @State() previewDataURI: string = this.PDF_PLACEHOLDER_PATH;
   @State() selectedFile: any;
@@ -247,7 +248,7 @@ export class MyApp {
 
   setFilteredResults(searchString) {
     const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
-    const resultsArray = [];
+    //const resultsArray = [];
 
     if (searchString === '' || searchString.length < 3) {
       this.searchResults = [];
@@ -256,7 +257,13 @@ export class MyApp {
       return;
     }
 
-    flatStructure.forEach(item => {
+    this.searchResults = flatStructure.filter(item => {
+      return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
+    });
+
+    this.hideSearchResults = false;
+
+    /*flatStructure.forEach(item => {
       const newItem = {
         name: item.name,
         pdf: item,
@@ -287,7 +294,7 @@ export class MyApp {
       }
     });
 
-    this.searchResults = resultsArray;
+    this.searchResults = resultsArray;*/
   }
 
   compareDirectoriesHelper(a, b) {
@@ -316,34 +323,34 @@ export class MyApp {
     return [
       <ion-header>
         <ion-toolbar color="primary">
-        {this.textIndexComplete ?
-          <ion-searchbar animated placeholder="Minimum 3 characters" onIonInput={event => this.searchBarHandler(event)}
-          onIonCancel={event => this.searchBarHandler(event)}/> :
-          <div>Indexing PDFs..</div>}
-        </ion-toolbar>
+        <div slot="start">
+          <img src="./assets/images/op-circus.png" />
+        </div>
+        <div class="e-bundle">
+          <img src="./assets/images/e-bundle.png" />
+        </div>
+      </ion-toolbar>
       </ion-header>,
       <ion-content>
         <div class="container">
-          <div class="treeview">
+          <div class="treeview" hidden={this.hideSearchResults === false}>
             {this.directoryTreeJSX}
           </div>
-          <div class="search-results">
+          <div class="search-results" hidden={this.hideSearchResults === true}>
             <ion-card class="results-card">
               <ion-card-content>
                 <ion-card-title>Search Results</ion-card-title>
                   <ion-list>
-                  {this.searchResults.length > 0 ? this.searchResults.map(match =>
+                  {this.searchResults.length > 0 ? this.searchResults.map(pdf =>
                     <ion-item
                       class="file-item"
                       detail
-                      onClick={event => this.handleFileClick(event, match.pdf)}
-                      onDblClick={() => this.handleFileDoubleClick(match.pdf)}>
+                      onClick={event => this.handleFileClick(event, pdf)}
+                      onDblClick={() => this.handleFileDoubleClick(pdf)}>
                       <span class="pdf" />
                       <ion-label>
-                        {match.name}
-                        {match.pageMatches.map(pageMatch =>
-                          <div class="pdf-match">Page <strong>{pageMatch.page}</strong> contains <strong>{pageMatch.textMatches}</strong> matches</div>
-                        )}
+                        {pdf.name}
+                        <span class="pdf-match">{pdf.path}</span>
                       </ion-label>
                     </ion-item>
                   ) : <p class='no-results'>No results match your search</p>}
@@ -351,8 +358,12 @@ export class MyApp {
             </ion-card-content>
             </ion-card>
           </div>
-          <div class="preview-holder" onClick={() => this.openFile(this.selectedFile.path)}>
-            <img src={this.previewDataURI} />
+          <div class="preview-holder" onClick={() => this.selectedFile && this.openFile(this.selectedFile.path)}>
+          {this.textIndexComplete ?
+            <ion-searchbar animated placeholder="Minimum 3 characters" onIonInput={event => this.searchBarHandler(event)}
+            onIonCancel={event => this.searchBarHandler(event)}/> :
+            <div>Indexing PDFs..</div>}
+          <img src={this.previewDataURI} />
           </div>
         </div>
       </ion-content>

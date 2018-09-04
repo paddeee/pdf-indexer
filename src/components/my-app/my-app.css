@@ -1,6 +1,28 @@
+ion-toolbar.ion-color-primary {
+  --ion-color-base: #fff !important;
+}
+
+ion-toolbar {
+  align-items: flex-end;
+}
+
+.e-bundle {
+  text-align: end;
+}
+
+.header-md:after {
+  background-image: none;
+  border: 8px solid #333;
+}
+
+.header img {
+  height: initial;
+  width: initial;
+}
+
 .container {
   display: grid;
-  grid-template-columns: 250px auto 300px;
+  grid-template-columns: auto 500px;
   height: 100%;
 }
 
@@ -130,12 +152,16 @@ img {
 }
 
 .preview-holder {
-  width: 300px;
-  padding: 20px 20px 0 0;
+  width: 500px;
+  padding: 20px;
 }
 
 .preview-holder > img {
   border: 1px solid #dcdcdc;
   height: initial;
-  width: 300px;
+  width: 500px;
+}
+
+.sc-ion-searchbar-md-h {
+  padding: 0 0 16px 0;
 }

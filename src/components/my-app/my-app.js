@@ -14,7 +14,8 @@ let MyApp = class MyApp {
         this.PDF_PLACEHOLDER_PATH = './assets/images/pdf-placeholder.png';
         this.searchResults = [];
         this.preventSingleClick = false;
-        this.textIndexComplete = false;
+        this.textIndexComplete = true;
+        this.hideSearchResults = true;
         this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
         this.browserDirectoryStructure = [
             { name: "Furniture", type: 'directory', items: [
@@ -193,39 +194,49 @@ let MyApp = class MyApp {
     }
     setFilteredResults(searchString) {
         const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
-        const resultsArray = [];
+        //const resultsArray = [];
         if (searchString === '' || searchString.length < 3) {
             this.searchResults = [];
             this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
             this.selectedFile = null;
             return;
         }
-        flatStructure.forEach(item => {
-            const newItem = {
-                name: item.name,
-                pdf: item,
-                pageMatches: []
-            };
-            if (item.type === 'file') {
-                item.textContent.forEach((page, index) => {
-                    const pageObject = {
-                        page: index + 1,
-                        textMatches: 0
-                    };
-                    const matchingSegments = page.filter(textSegment => {
-                        return textSegment.toLowerCase().includes(searchString.toLowerCase());
-                    });
-                    if (matchingSegments.length > 0) {
-                        pageObject.textMatches = matchingSegments.length;
-                        newItem.pageMatches.push(pageObject);
-                    }
-                });
-                if (newItem.pageMatches.length > 0) {
-                    resultsArray.push(newItem);
-                }
-            }
+        this.searchResults = flatStructure.filter(item => {
+            return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
         });
-        this.searchResults = resultsArray;
+        this.hideSearchResults = false;
+        /*flatStructure.forEach(item => {
+          const newItem = {
+            name: item.name,
+            pdf: item,
+            pageMatches: []
+          };
+    
+          if (item.type === 'file') {
+            item.textContent.forEach((page, index) => {
+    
+              const pageObject = {
+                page: index + 1,
+                textMatches: 0
+              };
+    
+              const matchingSegments = page.filter(textSegment => {
+                return textSegment.toLowerCase().includes(searchString.toLowerCase());
+              });
+    
+              if (matchingSegments.length > 0) {
+                pageObject.textMatches = matchingSegments.length;
+                newItem.pageMatches.push(pageObject);
+              }
+            });
+    
+            if (newItem.pageMatches.length > 0) {
+              resultsArray.push(newItem);
+            }
+          }
+        });
+    
+        this.searchResults = resultsArray;*/
     }
     compareDirectoriesHelper(a, b) {
         if (a.items.length < b.items.length) {
@@ -251,27 +262,27 @@ let MyApp = class MyApp {
     render() {
         return [
             h("ion-header", null,
-                h("ion-toolbar", { color: "primary" }, this.textIndexComplete ?
-                    h("ion-searchbar", { animated: true, placeholder: "Minimum 3 characters", onIonInput: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
-                    h("div", null, "Indexing PDFs.."))),
+                h("ion-toolbar", { color: "primary" },
+                    h("div", { slot: "start" },
+                        h("img", { src: "./assets/images/op-circus.png" })),
+                    h("div", { class: "e-bundle" },
+                        h("img", { src: "./assets/images/e-bundle.png" })))),
             h("ion-content", null,
                 h("div", { class: "container" },
-                    h("div", { class: "treeview" }, this.directoryTreeJSX),
-                    h("div", { class: "search-results" },
+                    h("div", { class: "treeview", hidden: this.hideSearchResults === false }, this.directoryTreeJSX),
+                    h("div", { class: "search-results", hidden: this.hideSearchResults === true },
                         h("ion-card", { class: "results-card" },
                             h("ion-card-content", null,
                                 h("ion-card-title", null, "Search Results"),
-                                h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(match => h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, match.pdf), onDblClick: () => this.handleFileDoubleClick(match.pdf) },
+                                h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(pdf => h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, pdf), onDblClick: () => this.handleFileDoubleClick(pdf) },
                                     h("span", { class: "pdf" }),
                                     h("ion-label", null,
-                                        match.name,
-                                        match.pageMatches.map(pageMatch => h("div", { class: "pdf-match" },
-                                            "Page ",
-                                            h("strong", null, pageMatch.page),
-                                            " contains ",
-                                            h("strong", null, pageMatch.textMatches),
-                                            " matches"))))) : h("p", { class: 'no-results' }, "No results match your search"))))),
-                    h("div", { class: "preview-holder", onClick: () => this.openFile(this.selectedFile.path) },
+                                        pdf.name,
+                                        h("span", { class: "pdf-match" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search"))))),
+                    h("div", { class: "preview-holder", onClick: () => this.selectedFile && this.openFile(this.selectedFile.path) },
+                        this.textIndexComplete ?
+                            h("ion-searchbar", { animated: true, placeholder: "Minimum 3 characters", onIonInput: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
+                            h("div", null, "Indexing PDFs.."),
                         h("img", { src: this.previewDataURI }))))
         ];
     }
@@ -288,6 +299,9 @@ __decorate([
 __decorate([
     State()
 ], MyApp.prototype, "textIndexComplete", void 0);
+__decorate([
+    State()
+], MyApp.prototype, "hideSearchResults", void 0);
 __decorate([
     State()
 ], MyApp.prototype, "timer", void 0);
