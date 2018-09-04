@@ -8,6 +8,7 @@ import '@ionic/core';
 import { Component, State } from '@stencil/core';
 require('electron').webFrame.registerURLSchemeAsPrivileged('file');
 const ipcRenderer = require('electron').ipcRenderer;
+const fs = require('fs');
 let MyApp = class MyApp {
     constructor() {
         this.SPINNER_PATH = './assets/images/spinner.gif';
@@ -41,11 +42,19 @@ let MyApp = class MyApp {
         ];
     }
     componentWillLoad() {
-        this.getDirectoryTree();
-        ipcRenderer.on('preview-generated', (event, data) => {
-            console.log(event);
-            this.createPreviewImage(data);
-        });
+        if (ipcRenderer) {
+            ipcRenderer.on('directory-tree-created', (event, arg) => {
+                console.log(event);
+                this.getDirectoryTree(arg);
+                ipcRenderer.send('app-ready');
+                this.indexPDFText();
+            });
+            ipcRenderer.on('preview-generated', (event, data) => {
+                console.log(event);
+                this.createPreviewImage(data);
+            });
+            ipcRenderer.send('renderer-ready');
+        }
     }
     createPreviewImage(data) {
         const scale = 1;
@@ -69,24 +78,58 @@ let MyApp = class MyApp {
             });
         });
     }
-    getDirectoryTree() {
-        if (ipcRenderer) {
-            ipcRenderer.on('directory-tree-created', (event, arg) => {
-                console.log(event, arg);
-                this.appDirectoryStructure = arg;
-                this.sortDirectories(this.appDirectoryStructure);
-                this.directoryTreeJSX = this.createDirectoryTreeJSX(this.appDirectoryStructure);
-                setTimeout(() => {
-                    ipcRenderer.send('app-ready');
-                }, 3000);
+    getDirectoryTree(directoryTree) {
+        this.appDirectoryStructure = directoryTree;
+        this.sortDirectories(this.appDirectoryStructure);
+        this.directoryTreeJSX = this.createDirectoryTreeJSX(this.appDirectoryStructure);
+    }
+    indexPDFText() {
+        const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
+        flatStructure.forEach(item => {
+            if (item.type === 'file') {
+                this.getPDFTextContent(item.path).then((textContent) => {
+                    item.textContent = textContent;
+                });
+            }
+        });
+        console.log(this.appDirectoryStructure);
+    }
+    getPDFTypedArray(pdfURL) {
+        return new Uint8Array(fs.readFileSync(pdfURL));
+    }
+    getPDFTextContent(pdfPath) {
+        const pdfBlob = this.getPDFTypedArray(pdfPath);
+        return new Promise(resolve => {
+            pdfjsLib.getDocument(pdfBlob).then(function (doc) {
+                const numPages = doc.numPages;
+                let promises = [];
+                for (let i = 1; i <= numPages; i++) {
+                    promises.push(getContent(i));
+                }
+                function getContent(pageNum) {
+                    return new Promise(resolve => {
+                        doc.getPage(pageNum).then(page => {
+                            page.getTextContent().then(content => {
+                                // Content contains lots of information about the text layout and
+                                // styles, but we need only strings
+                                const strings = content.items.map(item => {
+                                    return item.str;
+                                });
+                                resolve(strings);
+                            });
+                        });
+                    });
+                }
+                Promise.all(promises)
+                    .then(results => {
+                    resolve(results);
+                })
+                    .catch(e => {
+                    // Handle errors here
+                    console.log(e);
+                });
             });
-            ipcRenderer.send('renderer-ready');
-        }
-        else {
-            this.sortDirectories(this.browserDirectoryStructure);
-            this.directoryTreeJSX = this.createDirectoryTreeJSX(this.browserDirectoryStructure);
-            console.log(this.browserDirectoryStructure);
-        }
+        });
     }
     // Used recursively to drill down through directories to group directories
     sortDirectories(directories) {

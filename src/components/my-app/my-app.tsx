@@ -6,6 +6,7 @@ declare var require: any;
 declare const pdfjsLib: any;
 
 const ipcRenderer = require('electron').ipcRenderer;
+const fs = require ('fs');
 
 @Component({
   tag: 'my-app',
@@ -50,12 +51,23 @@ export class MyApp {
   ];
 
   componentWillLoad() {
-    this.getDirectoryTree();
 
-    ipcRenderer.on('preview-generated', (event, data) => {
-      console.log(event);
-      this.createPreviewImage(data);
-    });
+    if (ipcRenderer) {
+
+      ipcRenderer.on('directory-tree-created', (event, arg) => {
+        console.log(event);
+        this.getDirectoryTree(arg);
+        ipcRenderer.send('app-ready');
+        this.indexPDFText();
+      });
+
+      ipcRenderer.on('preview-generated', (event, data) => {
+        console.log(event);
+        this.createPreviewImage(data);
+      });
+
+      ipcRenderer.send('renderer-ready');
+    }
   }
 
   createPreviewImage(data) {
@@ -87,26 +99,73 @@ export class MyApp {
     })
   }
 
-  getDirectoryTree() {
-    if (ipcRenderer) {
+  getDirectoryTree(directoryTree) {
+    this.appDirectoryStructure = directoryTree;
+    this.sortDirectories(this.appDirectoryStructure);
+    this.directoryTreeJSX = this.createDirectoryTreeJSX(this.appDirectoryStructure);
+  }
 
-      ipcRenderer.on('directory-tree-created', (event, arg) => {
-        console.log(event, arg);
-        this.appDirectoryStructure = arg;
-        this.sortDirectories(this.appDirectoryStructure);
-        this.directoryTreeJSX = this.createDirectoryTreeJSX(this.appDirectoryStructure);
+  indexPDFText()  {
+    const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
 
-        setTimeout(() => {
-          ipcRenderer.send('app-ready');
-        },3000);
-      });
+    flatStructure.forEach(item => {
+      if (item.type === 'file') {
+        this.getPDFTextContent(item.path).then((textContent) => {
+          item.textContent = textContent;
+        });
+      }
+    });
 
-      ipcRenderer.send('renderer-ready');
-    } else {
-      this.sortDirectories(this.browserDirectoryStructure);
-      this.directoryTreeJSX = this.createDirectoryTreeJSX(this.browserDirectoryStructure);
-      console.log(this.browserDirectoryStructure);
-    }
+    console.log(this.appDirectoryStructure);
+  }
+
+  getPDFTypedArray(pdfURL) {
+    return new Uint8Array(fs.readFileSync(pdfURL));
+  }
+
+  getPDFTextContent(pdfPath) {
+
+    const pdfBlob = this.getPDFTypedArray(pdfPath);
+
+    return new Promise(resolve => {
+
+      pdfjsLib.getDocument(pdfBlob).then(function (doc) {
+        const numPages = doc.numPages;
+        let promises = [];
+
+        for (let i = 1; i <= numPages; i++) {
+          promises.push(getContent(i));
+        }
+
+        function getContent(pageNum) {
+
+          return new Promise(resolve => {
+
+            doc.getPage(pageNum).then(page => {
+
+              page.getTextContent().then(content => {
+
+                // Content contains lots of information about the text layout and
+                // styles, but we need only strings
+                const strings = content.items.map(item => {
+                  return item.str;
+                });
+                resolve(strings);
+              })
+            })
+          })
+        }
+
+        Promise.all(promises)
+          .then(results => {
+            resolve(results);
+          })
+          .catch(e => {
+            // Handle errors here
+            console.log(e);
+          });
+      })
+    })
   }
 
   // Used recursively to drill down through directories to group directories

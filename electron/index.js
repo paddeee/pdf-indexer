@@ -99,49 +99,6 @@ function getPDFScreenShotTypedArray(pdfURL) {
     return new Uint8Array(fs.readFileSync(pdfURL));
 }
 
-// Get textContent of a PDF
-function getPDFTextContent(pdfPath) {
-
-  return new Promise(resolve => {
-
-    pdfjsLib.getDocument(pdfPath).then(function (doc) {
-      const numPages = doc.numPages;
-      let promises = [];
-
-      for (let i = 1; i <= numPages; i++) {
-        promises.push(getContent(i));
-      }
-
-      function getContent(pageNum) {
-
-        return new Promise(resolve => {
-
-          doc.getPage(pageNum).then(page => {
-
-            page.getTextContent().then(content => {
-
-              // Content contains lots of information about the text layout and
-              // styles, but we need only strings
-              const strings = content.items.map(item => {
-                return item.str;
-              });
-              resolve(strings);
-            })
-          })
-        })
-      }
-
-      Promise.all(promises)
-        .then(results => {
-          resolve(results);
-        })
-        .catch(e => {
-          // Handle errors here
-        });
-    })
-  })
-}
-
 function directoryTreeToObj(dir, done) {
   const results = [];
 
@@ -177,15 +134,11 @@ function directoryTreeToObj(dir, done) {
         else {
           if (path.extname(file).toLowerCase() === '.pdf') {
 
-            getPDFTextContent(file).then((textContent) => {
-
-              results.push({
-                type: 'file',
-                name: path.basename(file),
-                items: [],
-                path: file,
-                textContent: textContent
-              });
+            results.push({
+              type: 'file',
+              name: path.basename(file),
+              items: [],
+              path: file
             });
           }
           if (!--pending)
