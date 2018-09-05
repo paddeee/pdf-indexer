@@ -114,7 +114,7 @@ function getCreationDate(pdfPath) {
         const options = {
           weekday: 'long',
           year: 'numeric',
-          month: 'short',
+          month: 'long',
           day: 'numeric'
         };
         const formattedDate = new Date(Date.UTC(year, month, day, 0, 0, 0)).toLocaleString('en-gb', options);
@@ -241,7 +241,7 @@ directoryTreeToObj(rootDirectory, function(err, res){
 ipcMain.on('app-ready', function() {
   splashWindow.destroy();
   splashWindow = null;
-  //mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
   mainWindow.show();
 });
 

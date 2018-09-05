@@ -327,6 +327,11 @@ export class MyApp {
   }
 
   closeSearch() {
+    const searchBar = document.querySelector('#Search') as HTMLIonSearchbarElement;
+    searchBar.value = '';
+    this.searchResults = [];
+    this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+    this.selectedFile = null;
     this.hideSearchResults = true;
   }
 
@@ -376,7 +381,7 @@ export class MyApp {
           </div>
           <div class="preview-holder">
           {this.textIndexComplete ?
-            <ion-searchbar animated placeholder="Minimum 3 characters" onKeyUp={event => this.searchBarHandler(event)}
+            <ion-searchbar id="Search" animated placeholder="Minimum 3 characters" onKeyUp={event => this.searchBarHandler(event)}
             onIonCancel={event => this.searchBarHandler(event)}/> :
             <div>Indexing PDFs..</div>}
             <div onClick={() => this.selectedFile && this.openFile(this.selectedFile.path)}>

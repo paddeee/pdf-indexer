@@ -265,6 +265,11 @@ let MyApp = class MyApp {
         return this.flattenHelper(into, item.items);
     }
     closeSearch() {
+        const searchBar = document.querySelector('#Search');
+        searchBar.value = '';
+        this.searchResults = [];
+        this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+        this.selectedFile = null;
         this.hideSearchResults = true;
     }
     render() {
@@ -292,7 +297,7 @@ let MyApp = class MyApp {
                                         h("span", { class: "pdf-match" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search"))))),
                     h("div", { class: "preview-holder" },
                         this.textIndexComplete ?
-                            h("ion-searchbar", { animated: true, placeholder: "Minimum 3 characters", onKeyUp: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
+                            h("ion-searchbar", { id: "Search", animated: true, placeholder: "Minimum 3 characters", onKeyUp: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
                             h("div", null, "Indexing PDFs.."),
                         h("div", { onClick: () => this.selectedFile && this.openFile(this.selectedFile.path) },
                             h("img", { src: this.previewDataURI })),
