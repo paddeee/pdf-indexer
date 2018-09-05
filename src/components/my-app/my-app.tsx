@@ -243,6 +243,7 @@ export class MyApp {
 
   searchBarHandler(event: any) {
     const searchString = event.target.value;
+
     this.setFilteredResults(searchString);
   }
 
@@ -250,8 +251,14 @@ export class MyApp {
     const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
     //const resultsArray = [];
 
-    if (searchString === '' || searchString.length < 3) {
+    if (searchString.length === 0) {
       this.searchResults = [];
+      this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+      this.selectedFile = null;
+      return;
+    }
+
+    if (searchString.length > 0 && searchString.length < 3) {
       this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
       this.selectedFile = null;
       return;
@@ -319,6 +326,11 @@ export class MyApp {
     return this.flattenHelper(into, item.items);
   }
 
+  closeSearch() {
+    this.hideSearchResults = true;
+  }
+
+
   render() {
     return [
       <ion-header>
@@ -333,13 +345,18 @@ export class MyApp {
       </ion-header>,
       <ion-content>
         <div class="container">
-          <div class="treeview" hidden={this.hideSearchResults === false}>
+          <div class="treeview" hidden={!this.hideSearchResults}>
             {this.directoryTreeJSX}
           </div>
-          <div class="search-results" hidden={this.hideSearchResults === true}>
+          <div class="search-results" hidden={this.hideSearchResults}>
             <ion-card class="results-card">
               <ion-card-content>
-                <ion-card-title>Search Results</ion-card-title>
+                <ion-card-title>Search Results...</ion-card-title>
+
+                  <ion-button color="dark" shape="round" class="close-search" onClick={() => this.closeSearch()}>
+                    Close Search Results
+                    <ion-icon slot="end" name="close"></ion-icon>
+                  </ion-button>
                   <ion-list>
                   {this.searchResults.length > 0 ? this.searchResults.map(pdf =>
                     <ion-item
@@ -358,12 +375,20 @@ export class MyApp {
             </ion-card-content>
             </ion-card>
           </div>
-          <div class="preview-holder" onClick={() => this.selectedFile && this.openFile(this.selectedFile.path)}>
+          <div class="preview-holder">
           {this.textIndexComplete ?
-            <ion-searchbar animated placeholder="Minimum 3 characters" onIonInput={event => this.searchBarHandler(event)}
+            <ion-searchbar animated placeholder="Minimum 3 characters" onKeyUp={event => this.searchBarHandler(event)}
             onIonCancel={event => this.searchBarHandler(event)}/> :
             <div>Indexing PDFs..</div>}
-          <img src={this.previewDataURI} />
+            <div onClick={() => this.selectedFile && this.openFile(this.selectedFile.path)}>
+              <img src={this.previewDataURI} />
+            </div>
+            {this.selectedFile && this.previewDataURI !== this.SPINNER_PATH &&
+            <div class="preview-info">
+              <p><strong>{this.selectedFile.name}</strong></p>
+              <p>Date - {this.selectedFile.creationDate}</p>
+            </div>
+            }
           </div>
         </div>
       </ion-content>

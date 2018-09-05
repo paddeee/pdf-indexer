@@ -99,6 +99,35 @@ function getPDFScreenShotTypedArray(pdfURL) {
     return new Uint8Array(fs.readFileSync(pdfURL));
 }
 
+// Get metaData of a PDF
+function getCreationDate(pdfPath) {
+
+  return new Promise(resolve => {
+
+    pdfjsLib.getDocument(pdfPath).then(function (pdfDoc) {
+
+      pdfDoc.getMetadata().then(function(metaData) {
+        const creationDate = metaData.info.CreationDate;
+        const year = creationDate.substring(2, 6);
+        const month = creationDate.substring(6, 8);
+        const day = creationDate.substring(8, 10);
+        const options = {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        };
+        const formattedDate = new Date(Date.UTC(year, month, day, 0, 0, 0)).toLocaleString('en-gb', options);
+
+        resolve(formattedDate);
+      }).catch(function(err) {
+        console.log('Error getting meta data');
+        console.log(err);
+      });
+    })
+  })
+}
+
 // Get textContent of a PDF
 function getPDFTextContent(pdfPath) {
 
@@ -177,15 +206,18 @@ function directoryTreeToObj(dir, done) {
         else {
           if (path.extname(file).toLowerCase() === '.pdf') {
 
-            //getPDFTextContent(file).then((textContent) => {
+            getCreationDate(file).then(creationDate => {
+            //getPDFTextContent(file).then(textContent => {
 
               results.push({
                 type: 'file',
-                name: path.basename(file),
+                name: path.basename(file, '.pdf'),
                 items: [],
-                path: file/*,
+                path: file,
+                creationDate: creationDate/*,
                 textContent: textContent*/
               });
+            });
             //});
           }
           if (!--pending)
@@ -209,7 +241,7 @@ directoryTreeToObj(rootDirectory, function(err, res){
 ipcMain.on('app-ready', function() {
   splashWindow.destroy();
   splashWindow = null;
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
   mainWindow.show();
 });
 

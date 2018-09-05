@@ -195,8 +195,13 @@ let MyApp = class MyApp {
     setFilteredResults(searchString) {
         const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
         //const resultsArray = [];
-        if (searchString === '' || searchString.length < 3) {
+        if (searchString.length === 0) {
             this.searchResults = [];
+            this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+            this.selectedFile = null;
+            return;
+        }
+        if (searchString.length > 0 && searchString.length < 3) {
             this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
             this.selectedFile = null;
             return;
@@ -259,6 +264,9 @@ let MyApp = class MyApp {
         into.push(item);
         return this.flattenHelper(into, item.items);
     }
+    closeSearch() {
+        this.hideSearchResults = true;
+    }
     render() {
         return [
             h("ion-header", null,
@@ -269,21 +277,32 @@ let MyApp = class MyApp {
                         h("img", { src: "./assets/images/e-bundle.png" })))),
             h("ion-content", null,
                 h("div", { class: "container" },
-                    h("div", { class: "treeview", hidden: this.hideSearchResults === false }, this.directoryTreeJSX),
-                    h("div", { class: "search-results", hidden: this.hideSearchResults === true },
+                    h("div", { class: "treeview", hidden: !this.hideSearchResults }, this.directoryTreeJSX),
+                    h("div", { class: "search-results", hidden: this.hideSearchResults },
                         h("ion-card", { class: "results-card" },
                             h("ion-card-content", null,
-                                h("ion-card-title", null, "Search Results"),
+                                h("ion-card-title", null, "Search Results..."),
+                                h("ion-button", { color: "dark", shape: "round", class: "close-search", onClick: () => this.closeSearch() },
+                                    "Close Search Results",
+                                    h("ion-icon", { slot: "end", name: "close" })),
                                 h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(pdf => h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, pdf), onDblClick: () => this.handleFileDoubleClick(pdf) },
                                     h("span", { class: "pdf" }),
                                     h("ion-label", null,
                                         pdf.name,
                                         h("span", { class: "pdf-match" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search"))))),
-                    h("div", { class: "preview-holder", onClick: () => this.selectedFile && this.openFile(this.selectedFile.path) },
+                    h("div", { class: "preview-holder" },
                         this.textIndexComplete ?
-                            h("ion-searchbar", { animated: true, placeholder: "Minimum 3 characters", onIonInput: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
+                            h("ion-searchbar", { animated: true, placeholder: "Minimum 3 characters", onKeyUp: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
                             h("div", null, "Indexing PDFs.."),
-                        h("img", { src: this.previewDataURI }))))
+                        h("div", { onClick: () => this.selectedFile && this.openFile(this.selectedFile.path) },
+                            h("img", { src: this.previewDataURI })),
+                        this.selectedFile && this.previewDataURI !== this.SPINNER_PATH &&
+                            h("div", { class: "preview-info" },
+                                h("p", null,
+                                    h("strong", null, this.selectedFile.name)),
+                                h("p", null,
+                                    "Date - ",
+                                    this.selectedFile.creationDate)))))
         ];
     }
 };
