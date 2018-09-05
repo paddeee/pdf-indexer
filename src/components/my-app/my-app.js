@@ -286,7 +286,7 @@ let MyApp = class MyApp {
                                     "Close Search Results",
                                     h("ion-icon", { slot: "end", name: "close" })),
                                 h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(pdf => h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, pdf), onDblClick: () => this.handleFileDoubleClick(pdf) },
-                                    h("span", { class: "pdf" }),
+                                    h("img", { src: "./assets/images/pdf-icon.png", class: "pdf-icon" }),
                                     h("ion-label", null,
                                         pdf.name,
                                         h("span", { class: "pdf-match" }, pdf.path)))) : h("p", { class: 'no-results' }, "No results match your search"))))),

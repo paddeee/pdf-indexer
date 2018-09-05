@@ -138,13 +138,13 @@ li {
 }
 
 .pdf {
-  background-image: url(./assets/images/treeview-sprite.png);
-  background-position: 0 -32px;
+  background-image: url(./assets/images/pdf-icon.png);
+  background-size: cover;
   display: inline-block;
   width: 16px;
   height: 16px;
   vertical-align: top;
-  margin-right: 3px;
+  margin-right: 5px;
 }
 
 .pdf-match {
@@ -192,12 +192,18 @@ li {
   height: 27px;
 }
 
+.file-item .pdf-icon {
+  height: 30px;
+  padding: 0 5px 0 0;
+  width: 30px;
+}
+
 .no-results {
   padding: 15px 0 0;
 }
 
 .close-search {
   position: absolute;
-  top: 6px;
+  top: 4px;
   right: 20px;
 }

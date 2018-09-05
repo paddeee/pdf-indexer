@@ -330,7 +330,6 @@ export class MyApp {
     this.hideSearchResults = true;
   }
 
-
   render() {
     return [
       <ion-header>
@@ -364,7 +363,7 @@ export class MyApp {
                       detail
                       onClick={event => this.handleFileClick(event, pdf)}
                       onDblClick={() => this.handleFileDoubleClick(pdf)}>
-                      <span class="pdf" />
+                      <img src="./assets/images/pdf-icon.png" class="pdf-icon" />
                       <ion-label>
                         {pdf.name}
                         <span class="pdf-match">{pdf.path}</span>
