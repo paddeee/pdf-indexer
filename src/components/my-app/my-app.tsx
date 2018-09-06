@@ -6,7 +6,6 @@ declare var require: any;
 declare const pdfjsLib: any;
 
 const ipcRenderer = require('electron').ipcRenderer;
-const fs = require ('fs');
 
 @Component({
   tag: 'my-app',
@@ -21,11 +20,13 @@ export class MyApp {
   @State() searchResults: any = [];
   @State() preventSingleClick: boolean = false;
   @State() textIndexComplete: boolean = false;
+  @State() hideSearchResults: boolean = true;
   @State() timer: any;
   @State() previewDataURI: string = this.PDF_PLACEHOLDER_PATH;
   @State() selectedFile: any;
 
   @State() appDirectoryStructure: any;
+  @State() indexedStructure: any;
   @State() browserDirectoryStructure: any = [
     { name: "Furniture", type: 'directory', items: [
         { name: "Sofas.pdf", type: 'file', path: "/path/to/Sofas.pdf", items: [] },
@@ -107,65 +108,22 @@ export class MyApp {
 
   indexPDFText()  {
     const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
+    const worker = new Worker('./assets/scripts/pdf-index.worker.js');
 
-    flatStructure.forEach(item => {
+    /*flatStructure.forEach(item => {
       if (item.type === 'file') {
         this.getPDFTextContent(item.path).then((textContent) => {
           item.textContent = textContent;
         });
       }
-    });
+    });*/
 
-    console.log(this.appDirectoryStructure);
-  }
-
-  getPDFTypedArray(pdfURL) {
-    return new Uint8Array(fs.readFileSync(pdfURL));
-  }
-
-  getPDFTextContent(pdfPath) {
-
-    const pdfBlob = this.getPDFTypedArray(pdfPath);
-
-    return new Promise(resolve => {
-
-      pdfjsLib.getDocument(pdfBlob).then(function (doc) {
-        const numPages = doc.numPages;
-        let promises = [];
-
-        for (let i = 1; i <= numPages; i++) {
-          promises.push(getContent(i));
-        }
-
-        function getContent(pageNum) {
-
-          return new Promise(resolve => {
-
-            doc.getPage(pageNum).then(page => {
-
-              page.getTextContent().then(content => {
-
-                // Content contains lots of information about the text layout and
-                // styles, but we need only strings
-                const strings = content.items.map(item => {
-                  return item.str;
-                });
-                resolve(strings);
-              })
-            })
-          })
-        }
-
-        Promise.all(promises)
-          .then(results => {
-            resolve(results);
-          })
-          .catch(e => {
-            // Handle errors here
-            console.log(e);
-          });
-      })
-    })
+    // Use web worker to prevent UI blocking
+    worker.postMessage({'flatStructure': flatStructure});
+    worker.addEventListener('message', e => {
+      this.indexedStructure = e.data;
+      this.textIndexComplete = true;
+    }, false);
   }
 
   // Used recursively to drill down through directories to group directories
@@ -180,52 +138,52 @@ export class MyApp {
       return (
         <ul> {
           directory.map(item => {
-            const isCollapsibleDirectory = item.items.length > 0;
-            const isEmptyDirectory = item.items.length === 0 && item.type === 'directory';
-            const isFile = item.type === 'file';
-            let itemJSX;
+          const isCollapsibleDirectory = item.items.length > 0;
+          const isEmptyDirectory = item.items.length === 0 && item.type === 'directory';
+          const isFile = item.type === 'file';
+          let itemJSX;
 
-            if (isCollapsibleDirectory) {
-              itemJSX = (
-                <div class="collapsible-directory" onClick={event => this.handleDirectoryClick(event)}>
-                  <img src="./assets/images/md-arrow-dropright.svg" />
-                  <span class="item-container">
-                    <span class="directory" />{item.name}
-                  </span>
-                </div>
-              )
-            }
+          if (isCollapsibleDirectory) {
+            itemJSX = (
+              <div class="collapsible-directory" onClick={event => this.handleDirectoryClick(event)}>
+            <img src="./assets/images/md-arrow-dropright.svg" />
+            <span class="item-container">
+            <span class="directory" />{item.name}
+            </span>
+            </div>
+          )
+          }
 
-            if (isEmptyDirectory) {
-              itemJSX = (
-                <div>
-                  <span class="item-container">
-                    <span class="directory" />{item.name}
-                  </span>
-                </div>
-              )
-            }
+          if (isEmptyDirectory) {
+            itemJSX = (
+              <div>
+                <span class="item-container">
+              <span class="directory" />{item.name}
+            </span>
+            </div>
+          )
+          }
 
-            if (isFile) {
-              itemJSX = (
-                <div>
-                  <span class="file-item item-container" onClick={event => this.handleFileClick(event, item)} onDblClick={() => this.handleFileDoubleClick(item)}>
-                    <span class="pdf" />{item.name}
-                  </span>
-                </div>
-              )
-            }
+          if (isFile) {
+            itemJSX = (
+              <div>
+                <span class="file-item item-container" onClick={event => this.handleFileClick(event, item)} onDblClick={() => this.handleFileDoubleClick(item)}>
+            <span class="pdf" />{item.name}
+            </span>
+            </div>
+          )
+          }
 
-            return (
-              <li>
-                {itemJSX}
-                {this.createDirectoryTreeJSX(item.items)}
-              </li>
-            )
-          })
-        }
-        </ul>
-      )
+          return (
+            <li>
+              {itemJSX}
+          {this.createDirectoryTreeJSX(item.items)}
+          </li>
+        )
+        })
+    }
+      </ul>
+    )
     }
   }
 
@@ -301,21 +259,33 @@ export class MyApp {
 
   searchBarHandler(event: any) {
     const searchString = event.target.value;
+
     this.setFilteredResults(searchString);
   }
 
   setFilteredResults(searchString) {
-    const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
     const resultsArray = [];
 
-    if (searchString === '' || searchString.length < 3) {
+    if (searchString.length === 0) {
       this.searchResults = [];
       this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
       this.selectedFile = null;
       return;
     }
 
-    flatStructure.forEach(item => {
+    if (searchString.length > 0 && searchString.length < 3) {
+      this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+      this.selectedFile = null;
+      return;
+    }
+
+    /*this.searchResults = flatStructure.filter(item => {
+      return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
+    });*/
+
+    this.hideSearchResults = false;
+
+    this.indexedStructure.forEach(item => {
       const newItem = {
         name: item.name,
         pdf: item,
@@ -371,50 +341,78 @@ export class MyApp {
     return this.flattenHelper(into, item.items);
   }
 
+  closeSearch() {
+    const searchBar = document.querySelector('#Search') as HTMLIonSearchbarElement;
+    searchBar.value = '';
+    this.searchResults = [];
+    this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+    this.selectedFile = null;
+    this.hideSearchResults = true;
+  }
+
   render() {
     return [
       <ion-header>
-        <ion-toolbar color="primary">
-        {this.textIndexComplete ?
-          <ion-searchbar animated placeholder="Minimum 3 characters" onIonInput={event => this.searchBarHandler(event)}
-          onIonCancel={event => this.searchBarHandler(event)}/> :
-          <div>Indexing PDFs..</div>}
-        </ion-toolbar>
+      <ion-toolbar color="primary">
+      <div slot="start">
+      <img src="./assets/images/op-circus.png" />
+        </div>
+        <div class="e-bundle">
+      <img src="./assets/images/e-bundle.png" />
+      </div>
+      </ion-toolbar>
       </ion-header>,
       <ion-content>
-        <div class="container">
-          <div class="treeview">
-            {this.directoryTreeJSX}
-          </div>
-          <div class="search-results">
-            <ion-card class="results-card">
-              <ion-card-content>
-                <ion-card-title>Search Results</ion-card-title>
-                  <ion-list>
-                  {this.searchResults.length > 0 ? this.searchResults.map(match =>
-                    <ion-item
-                      class="file-item"
-                      detail
-                      onClick={event => this.handleFileClick(event, match.pdf)}
-                      onDblClick={() => this.handleFileDoubleClick(match.pdf)}>
-                      <span class="pdf" />
-                      <ion-label>
-                        {match.name}
-                        {match.pageMatches.map(pageMatch =>
-                          <div class="pdf-match">Page <strong>{pageMatch.page}</strong> contains <strong>{pageMatch.textMatches}</strong> matches</div>
-                        )}
-                      </ion-label>
-                    </ion-item>
-                  ) : <p class='no-results'>No results match your search</p>}
-                  </ion-list>
-            </ion-card-content>
-            </ion-card>
-          </div>
-          <div class="preview-holder" onClick={() => this.openFile(this.selectedFile.path)}>
-            <img src={this.previewDataURI} />
-          </div>
-        </div>
-      </ion-content>
-    ];
+      <div class="container">
+      <div class="treeview" hidden={!this.hideSearchResults}>
+    {this.directoryTreeJSX}
+    </div>
+    <div class="search-results" hidden={this.hideSearchResults}>
+    <ion-card class="results-card">
+      <ion-card-content>
+      <ion-card-title>Search Results...</ion-card-title>
+
+    <ion-button color="dark" shape="round" class="close-search" onClick={() => this.closeSearch()}>
+    Close Search Results
+    <ion-icon slot="end" name="close"></ion-icon>
+    </ion-button>
+    <ion-list>
+    {this.searchResults.length > 0 ? this.searchResults.map(match =>
+        <ion-item
+      class="file-item"
+    detail
+    onClick={event => this.handleFileClick(event, match.pdf)}
+    onDblClick={() => this.handleFileDoubleClick(match.pdf)}>
+    <span class="pdf" />
+      <ion-label>
+      {match.name}
+    {match.pageMatches.map(pageMatch =>
+      <div class="pdf-match">Page <strong>{pageMatch.page}</strong> contains <strong>{pageMatch.textMatches}</strong> matches</div>
+    )}
+    </ion-label>
+    </ion-item>
+  ) : <p class='no-results'>No results match your search</p>}
+    </ion-list>
+    </ion-card-content>
+    </ion-card>
+    </div>
+    <div class="preview-holder">
+    {this.textIndexComplete ?
+      <ion-searchbar id="Search" animated placeholder="Minimum 3 characters" onKeyUp={event => this.searchBarHandler(event)}
+    onIonCancel={event => this.searchBarHandler(event)}/> :
+    <div>Indexing PDFs..</div>}
+    <div onClick={() => this.selectedFile && this.openFile(this.selectedFile.path)}>
+    <img src={this.previewDataURI} />
+    </div>
+    {this.selectedFile && this.previewDataURI !== this.SPINNER_PATH &&
+    <div class="preview-info">
+      <p><strong>{this.selectedFile.name}</strong></p>
+    <p>Date - {this.selectedFile.creationDate}</p>
+    </div>
+    }
+    </div>
+    </div>
+    </ion-content>
+  ];
   }
-}
+  }

@@ -8,7 +8,6 @@ import '@ionic/core';
 import { Component, State } from '@stencil/core';
 require('electron').webFrame.registerURLSchemeAsPrivileged('file');
 const ipcRenderer = require('electron').ipcRenderer;
-const fs = require('fs');
 let MyApp = class MyApp {
     constructor() {
         this.SPINNER_PATH = './assets/images/spinner.gif';
@@ -16,6 +15,7 @@ let MyApp = class MyApp {
         this.searchResults = [];
         this.preventSingleClick = false;
         this.textIndexComplete = false;
+        this.hideSearchResults = true;
         this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
         this.browserDirectoryStructure = [
             { name: "Furniture", type: 'directory', items: [
@@ -85,51 +85,20 @@ let MyApp = class MyApp {
     }
     indexPDFText() {
         const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
-        flatStructure.forEach(item => {
-            if (item.type === 'file') {
-                this.getPDFTextContent(item.path).then((textContent) => {
-                    item.textContent = textContent;
-                });
-            }
-        });
-        console.log(this.appDirectoryStructure);
-    }
-    getPDFTypedArray(pdfURL) {
-        return new Uint8Array(fs.readFileSync(pdfURL));
-    }
-    getPDFTextContent(pdfPath) {
-        const pdfBlob = this.getPDFTypedArray(pdfPath);
-        return new Promise(resolve => {
-            pdfjsLib.getDocument(pdfBlob).then(function (doc) {
-                const numPages = doc.numPages;
-                let promises = [];
-                for (let i = 1; i <= numPages; i++) {
-                    promises.push(getContent(i));
-                }
-                function getContent(pageNum) {
-                    return new Promise(resolve => {
-                        doc.getPage(pageNum).then(page => {
-                            page.getTextContent().then(content => {
-                                // Content contains lots of information about the text layout and
-                                // styles, but we need only strings
-                                const strings = content.items.map(item => {
-                                    return item.str;
-                                });
-                                resolve(strings);
-                            });
-                        });
-                    });
-                }
-                Promise.all(promises)
-                    .then(results => {
-                    resolve(results);
-                })
-                    .catch(e => {
-                    // Handle errors here
-                    console.log(e);
-                });
+        const worker = new Worker('./assets/scripts/pdf-index.worker.js');
+        /*flatStructure.forEach(item => {
+          if (item.type === 'file') {
+            this.getPDFTextContent(item.path).then((textContent) => {
+              item.textContent = textContent;
             });
-        });
+          }
+        });*/
+        // Use web worker to prevent UI blocking
+        worker.postMessage({ 'flatStructure': flatStructure });
+        worker.addEventListener('message', e => {
+            this.indexedStructure = e.data;
+            this.textIndexComplete = true;
+        }, false);
     }
     // Used recursively to drill down through directories to group directories
     sortDirectories(directories) {
@@ -235,15 +204,23 @@ let MyApp = class MyApp {
         this.setFilteredResults(searchString);
     }
     setFilteredResults(searchString) {
-        const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
         const resultsArray = [];
-        if (searchString === '' || searchString.length < 3) {
+        if (searchString.length === 0) {
             this.searchResults = [];
             this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
             this.selectedFile = null;
             return;
         }
-        flatStructure.forEach(item => {
+        if (searchString.length > 0 && searchString.length < 3) {
+            this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+            this.selectedFile = null;
+            return;
+        }
+        /*this.searchResults = flatStructure.filter(item => {
+          return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
+        });*/
+        this.hideSearchResults = false;
+        this.indexedStructure.forEach(item => {
             const newItem = {
                 name: item.name,
                 pdf: item,
@@ -291,19 +268,32 @@ let MyApp = class MyApp {
         into.push(item);
         return this.flattenHelper(into, item.items);
     }
+    closeSearch() {
+        const searchBar = document.querySelector('#Search');
+        searchBar.value = '';
+        this.searchResults = [];
+        this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
+        this.selectedFile = null;
+        this.hideSearchResults = true;
+    }
     render() {
         return [
             h("ion-header", null,
-                h("ion-toolbar", { color: "primary" }, this.textIndexComplete ?
-                    h("ion-searchbar", { animated: true, placeholder: "Minimum 3 characters", onIonInput: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
-                    h("div", null, "Indexing PDFs.."))),
+                h("ion-toolbar", { color: "primary" },
+                    h("div", { slot: "start" },
+                        h("img", { src: "./assets/images/op-circus.png" })),
+                    h("div", { class: "e-bundle" },
+                        h("img", { src: "./assets/images/e-bundle.png" })))),
             h("ion-content", null,
                 h("div", { class: "container" },
-                    h("div", { class: "treeview" }, this.directoryTreeJSX),
-                    h("div", { class: "search-results" },
+                    h("div", { class: "treeview", hidden: !this.hideSearchResults }, this.directoryTreeJSX),
+                    h("div", { class: "search-results", hidden: this.hideSearchResults },
                         h("ion-card", { class: "results-card" },
                             h("ion-card-content", null,
-                                h("ion-card-title", null, "Search Results"),
+                                h("ion-card-title", null, "Search Results..."),
+                                h("ion-button", { color: "dark", shape: "round", class: "close-search", onClick: () => this.closeSearch() },
+                                    "Close Search Results",
+                                    h("ion-icon", { slot: "end", name: "close" })),
                                 h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(match => h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, match.pdf), onDblClick: () => this.handleFileDoubleClick(match.pdf) },
                                     h("span", { class: "pdf" }),
                                     h("ion-label", null,
@@ -314,8 +304,19 @@ let MyApp = class MyApp {
                                             " contains ",
                                             h("strong", null, pageMatch.textMatches),
                                             " matches"))))) : h("p", { class: 'no-results' }, "No results match your search"))))),
-                    h("div", { class: "preview-holder", onClick: () => this.openFile(this.selectedFile.path) },
-                        h("img", { src: this.previewDataURI }))))
+                    h("div", { class: "preview-holder" },
+                        this.textIndexComplete ?
+                            h("ion-searchbar", { id: "Search", animated: true, placeholder: "Minimum 3 characters", onKeyUp: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
+                            h("div", null, "Indexing PDFs.."),
+                        h("div", { onClick: () => this.selectedFile && this.openFile(this.selectedFile.path) },
+                            h("img", { src: this.previewDataURI })),
+                        this.selectedFile && this.previewDataURI !== this.SPINNER_PATH &&
+                            h("div", { class: "preview-info" },
+                                h("p", null,
+                                    h("strong", null, this.selectedFile.name)),
+                                h("p", null,
+                                    "Date - ",
+                                    this.selectedFile.creationDate)))))
         ];
     }
 };
@@ -333,6 +334,9 @@ __decorate([
 ], MyApp.prototype, "textIndexComplete", void 0);
 __decorate([
     State()
+], MyApp.prototype, "hideSearchResults", void 0);
+__decorate([
+    State()
 ], MyApp.prototype, "timer", void 0);
 __decorate([
     State()
@@ -343,6 +347,9 @@ __decorate([
 __decorate([
     State()
 ], MyApp.prototype, "appDirectoryStructure", void 0);
+__decorate([
+    State()
+], MyApp.prototype, "indexedStructure", void 0);
 __decorate([
     State()
 ], MyApp.prototype, "browserDirectoryStructure", void 0);

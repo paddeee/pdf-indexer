@@ -1,13 +1,36 @@
+ion-toolbar.ion-color-primary {
+  --ion-color-base: #fff !important;
+}
+
+ion-toolbar {
+  align-items: flex-end;
+}
+
+.e-bundle {
+  text-align: end;
+}
+
+.header-md:after {
+  background-image: none;
+  bottom: -8px;
+  border: 8px solid #333;
+  height: 10px;
+}
+
+.header img {
+  height: initial;
+  width: initial;
+}
+
 .container {
   display: grid;
-  grid-template-columns: 250px auto 300px;
+  grid-template-columns: auto 400px;
   height: 100%;
 }
 
 .search-results {
   display: flex;
   justify-content: center;
-  max-width: 480px;
   padding: 10px 20px 0;
 }
 
@@ -22,7 +45,6 @@ h1 {
 
 .results-card {
   height: 80vh;
-  overflow: auto;
 }
 
 ion-card-title {
@@ -31,6 +53,12 @@ ion-card-title {
 
 ion-label.sc-ion-label-md-h {
   margin: 6px 8px;
+}
+
+ion-list {
+  overflow: auto;
+  height: calc(80vh - 58px);
+  padding: 15px 0 0;
 }
 
 /* TreeView Styles */
@@ -65,7 +93,7 @@ li {
   cursor: pointer;
 }
 
-img {
+.collapsible-directory img {
   cursor: pointer;
   height: 16px;
   width: 16px;
@@ -110,13 +138,13 @@ img {
 }
 
 .pdf {
-  background-image: url(./assets/images/treeview-sprite.png);
-  background-position: 0 -32px;
+  background-image: url(./assets/images/pdf-icon.png);
+  background-size: cover;
   display: inline-block;
   width: 16px;
   height: 16px;
   vertical-align: top;
-  margin-right: 3px;
+  margin-right: 5px;
 }
 
 .pdf-match {
@@ -130,12 +158,52 @@ img {
 }
 
 .preview-holder {
-  width: 300px;
-  padding: 20px 20px 0 0;
+  width: 400px;
+  padding: 20px;
 }
 
-.preview-holder > img {
-  border: 1px solid #dcdcdc;
+.preview-holder img {
+  border: 1px solid #7f7f7f;
+  cursor: pointer;
   height: initial;
-  width: 300px;
+  width: 360px;
+  max-height: 600px;
+}
+
+.preview-info p {
+  margin: 2px 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+.sc-ion-searchbar-md-h {
+  padding: 0 0 16px 0;
+}
+
+.searchbar-input.sc-ion-searchbar-md {
+  border-radius: 24px;
+  border: 4px solid #000;
+  box-shadow: none;
+}
+
+.searchbar-search-icon.sc-ion-searchbar-md {
+  color: #000;
+  width: 27px;
+  height: 27px;
+}
+
+.file-item .pdf-icon {
+  height: 30px;
+  padding: 0 5px 0 0;
+  width: 30px;
+}
+
+.no-results {
+  padding: 15px 0 0;
+}
+
+.close-search {
+  position: absolute;
+  top: 4px;
+  right: 20px;
 }
