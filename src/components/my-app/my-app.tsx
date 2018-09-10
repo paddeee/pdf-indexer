@@ -17,6 +17,7 @@ export class MyApp {
   PDF_PLACEHOLDER_PATH = './assets/images/pdf-placeholder.png';
 
   @State() directoryTreeJSX: any;
+  @State() fileNameResults: any = [];
   @State() searchResults: any = [];
   @State() preventSingleClick: boolean = false;
   @State() textIndexComplete: boolean = false;
@@ -27,29 +28,6 @@ export class MyApp {
 
   @State() appDirectoryStructure: any;
   @State() indexedStructure: any;
-  @State() browserDirectoryStructure: any = [
-    { name: "Furniture", type: 'directory', items: [
-        { name: "Sofas.pdf", type: 'file', path: "/path/to/Sofas.pdf", items: [] },
-        { name: "Tables & Chairs", type: 'directory', items: [
-            { name: "Tables.pdf", type: 'file', path: "/path/to/Tables.pdf", items: [] },
-            { name: "Chairs.pdf", type: 'file', path: "/path/to/Chairs.pdf", items: [] }
-          ]
-        },
-        { name: "Occasional Furniture.pdf", type: 'file', path: "/path/to/Occasional Furniture.pdf", items: [] }
-      ]
-    },
-    { name: "Kitchen Units.pdf", type: 'file', path: "/path/to/Kitchen Units.pdf", items: [] },
-    { name: "Decor", type: 'directory', items: [
-        { name: "Bed Linen.pdf", type: 'file', path: "/path/to/Bed Linen.pdf", items: [] },
-        { name: "Carpets.pdf", type: 'file', path: "/path/to/Carpets.pdf", items: [] },
-        { name: "Curtains & Blinds", type: 'directory', items: [
-            { name: "Curtains.pdf", type: 'file', path: "/path/to/Curtains.pdf", items: [] },
-            { name: "Blinds.pdf", type: 'file', path: "/path/to/Blinds.pdf", items: [], }
-          ]
-        }
-      ]
-    }
-  ];
 
   componentWillLoad() {
 
@@ -58,7 +36,9 @@ export class MyApp {
       ipcRenderer.on('directory-tree-created', (event, arg) => {
         console.log(event);
         this.getDirectoryTree(arg);
-        ipcRenderer.send('app-ready');
+        setTimeout(() => {
+          ipcRenderer.send('app-ready');
+        },3000);
         this.indexPDFText();
       });
 
@@ -109,14 +89,6 @@ export class MyApp {
   indexPDFText()  {
     const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
     const worker = new Worker('./assets/scripts/pdf-index.worker.js');
-
-    /*flatStructure.forEach(item => {
-      if (item.type === 'file') {
-        this.getPDFTextContent(item.path).then((textContent) => {
-          item.textContent = textContent;
-        });
-      }
-    });*/
 
     // Use web worker to prevent UI blocking
     worker.postMessage({'flatStructure': flatStructure});
@@ -186,6 +158,48 @@ export class MyApp {
     )
     }
   }
+
+  createSearchResultsJSX() {
+
+    let searchJSX = [];
+
+    if (this.searchResults.length === 0 && this.fileNameResults.length === 0) {
+      return (<p class='no-results'>No results match your search</p>);
+    }
+
+    this.fileNameResults.forEach(pdf => {
+      searchJSX.push((<ion-item class="file-item"
+      detail
+      onClick={event => this.handleFileClick(event, pdf)}
+      onDblClick={() => this.handleFileDoubleClick(pdf)}>
+      <span class="pdf" />
+        <ion-label>
+        <div class="match-name">{pdf.name}</div>
+        <div class="match-path">{pdf.path}</div>
+        <div class="pdf-match">Match on the file name</div>
+      </ion-label>
+      </ion-item>))
+    });
+
+    this.searchResults.forEach(match => {
+      searchJSX.push((<ion-item class="file-item"
+                detail
+                onClick={event => this.handleFileClick(event, match.pdf)}
+                onDblClick={() => this.handleFileDoubleClick(match.pdf)}>
+        <span class="pdf" />
+        <ion-label>
+          <div class="match-name">{match.name}</div>
+          <div class="match-path">{match.path}</div>
+          {match.pageMatches.map(pageMatch =>
+            <div class="pdf-match">Page <strong>{pageMatch.page}</strong> contains <strong>{pageMatch.textMatches}</strong> matches</div>
+          )}
+        </ion-label>
+      </ion-item>))
+    });
+
+    return searchJSX;
+  }
+
 
   handleFileClick(event, pdf) {
     this.timer = setTimeout(() => {
@@ -279,15 +293,12 @@ export class MyApp {
       return;
     }
 
-    /*this.searchResults = flatStructure.filter(item => {
-      return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
-    });*/
-
     this.hideSearchResults = false;
 
     this.indexedStructure.forEach(item => {
       const newItem = {
         name: item.name,
+        path: item.path,
         pdf: item,
         pageMatches: []
       };
@@ -314,6 +325,10 @@ export class MyApp {
           resultsArray.push(newItem);
         }
       }
+    });
+
+    this.fileNameResults = this.indexedStructure.filter(item => {
+      return item.name.toLowerCase().includes(searchString.toLowerCase());
     });
 
     this.searchResults = resultsArray;
@@ -377,37 +392,29 @@ export class MyApp {
     <ion-icon slot="end" name="close"></ion-icon>
     </ion-button>
     <ion-list>
-    {this.searchResults.length > 0 ? this.searchResults.map(match =>
-        <ion-item
-      class="file-item"
-    detail
-    onClick={event => this.handleFileClick(event, match.pdf)}
-    onDblClick={() => this.handleFileDoubleClick(match.pdf)}>
-    <span class="pdf" />
-      <ion-label>
-      {match.name}
-    {match.pageMatches.map(pageMatch =>
-      <div class="pdf-match">Page <strong>{pageMatch.page}</strong> contains <strong>{pageMatch.textMatches}</strong> matches</div>
-    )}
-    </ion-label>
-    </ion-item>
-  ) : <p class='no-results'>No results match your search</p>}
+      {this.createSearchResultsJSX()}
     </ion-list>
     </ion-card-content>
     </ion-card>
     </div>
     <div class="preview-holder">
     {this.textIndexComplete ?
-      <ion-searchbar id="Search" animated placeholder="Minimum 3 characters" onKeyUp={event => this.searchBarHandler(event)}
-    onIonCancel={event => this.searchBarHandler(event)}/> :
-    <div>Indexing PDFs..</div>}
+    <ion-searchbar
+      id="Search"
+      animated
+      placeholder="Minimum 3 characters"
+      onKeyUp={event => this.searchBarHandler(event)}
+      onIonCancel={event => this.searchBarHandler(event)}/> :
+    <div class="indexing">
+      Indexing PDFs..<img src={this.SPINNER_PATH} />
+    </div>}
     <div onClick={() => this.selectedFile && this.openFile(this.selectedFile.path)}>
-    <img src={this.previewDataURI} />
+      <img src={this.previewDataURI} />
     </div>
     {this.selectedFile && this.previewDataURI !== this.SPINNER_PATH &&
     <div class="preview-info">
       <p><strong>{this.selectedFile.name}</strong></p>
-    <p>Date - {this.selectedFile.creationDate}</p>
+      <p>Date - {this.selectedFile.creationDate}</p>
     </div>
     }
     </div>

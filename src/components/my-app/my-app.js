@@ -12,41 +12,21 @@ let MyApp = class MyApp {
     constructor() {
         this.SPINNER_PATH = './assets/images/spinner.gif';
         this.PDF_PLACEHOLDER_PATH = './assets/images/pdf-placeholder.png';
+        this.fileNameResults = [];
         this.searchResults = [];
         this.preventSingleClick = false;
         this.textIndexComplete = false;
         this.hideSearchResults = true;
         this.previewDataURI = this.PDF_PLACEHOLDER_PATH;
-        this.browserDirectoryStructure = [
-            { name: "Furniture", type: 'directory', items: [
-                    { name: "Sofas.pdf", type: 'file', path: "/path/to/Sofas.pdf", items: [] },
-                    { name: "Tables & Chairs", type: 'directory', items: [
-                            { name: "Tables.pdf", type: 'file', path: "/path/to/Tables.pdf", items: [] },
-                            { name: "Chairs.pdf", type: 'file', path: "/path/to/Chairs.pdf", items: [] }
-                        ]
-                    },
-                    { name: "Occasional Furniture.pdf", type: 'file', path: "/path/to/Occasional Furniture.pdf", items: [] }
-                ]
-            },
-            { name: "Kitchen Units.pdf", type: 'file', path: "/path/to/Kitchen Units.pdf", items: [] },
-            { name: "Decor", type: 'directory', items: [
-                    { name: "Bed Linen.pdf", type: 'file', path: "/path/to/Bed Linen.pdf", items: [] },
-                    { name: "Carpets.pdf", type: 'file', path: "/path/to/Carpets.pdf", items: [] },
-                    { name: "Curtains & Blinds", type: 'directory', items: [
-                            { name: "Curtains.pdf", type: 'file', path: "/path/to/Curtains.pdf", items: [] },
-                            { name: "Blinds.pdf", type: 'file', path: "/path/to/Blinds.pdf", items: [], }
-                        ]
-                    }
-                ]
-            }
-        ];
     }
     componentWillLoad() {
         if (ipcRenderer) {
             ipcRenderer.on('directory-tree-created', (event, arg) => {
                 console.log(event);
                 this.getDirectoryTree(arg);
-                ipcRenderer.send('app-ready');
+                setTimeout(() => {
+                    ipcRenderer.send('app-ready');
+                }, 3000);
                 this.indexPDFText();
             });
             ipcRenderer.on('preview-generated', (event, data) => {
@@ -86,13 +66,6 @@ let MyApp = class MyApp {
     indexPDFText() {
         const flatStructure = this.flattenHelper([], this.appDirectoryStructure);
         const worker = new Worker('./assets/scripts/pdf-index.worker.js');
-        /*flatStructure.forEach(item => {
-          if (item.type === 'file') {
-            this.getPDFTextContent(item.path).then((textContent) => {
-              item.textContent = textContent;
-            });
-          }
-        });*/
         // Use web worker to prevent UI blocking
         worker.postMessage({ 'flatStructure': flatStructure });
         worker.addEventListener('message', e => {
@@ -138,6 +111,34 @@ let MyApp = class MyApp {
                         this.createDirectoryTreeJSX(item.items)));
                 })));
         }
+    }
+    createSearchResultsJSX() {
+        let searchJSX = [];
+        if (this.searchResults.length === 0 && this.fileNameResults.length === 0) {
+            return (h("p", { class: 'no-results' }, "No results match your search"));
+        }
+        this.fileNameResults.forEach(pdf => {
+            searchJSX.push((h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, pdf), onDblClick: () => this.handleFileDoubleClick(pdf) },
+                h("span", { class: "pdf" }),
+                h("ion-label", null,
+                    h("div", { class: "match-name" }, pdf.name),
+                    h("div", { class: "match-path" }, pdf.path),
+                    h("div", { class: "pdf-match" }, "Match on the file name")))));
+        });
+        this.searchResults.forEach(match => {
+            searchJSX.push((h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, match.pdf), onDblClick: () => this.handleFileDoubleClick(match.pdf) },
+                h("span", { class: "pdf" }),
+                h("ion-label", null,
+                    h("div", { class: "match-name" }, match.name),
+                    h("div", { class: "match-path" }, match.path),
+                    match.pageMatches.map(pageMatch => h("div", { class: "pdf-match" },
+                        "Page ",
+                        h("strong", null, pageMatch.page),
+                        " contains ",
+                        h("strong", null, pageMatch.textMatches),
+                        " matches"))))));
+        });
+        return searchJSX;
     }
     handleFileClick(event, pdf) {
         this.timer = setTimeout(() => {
@@ -216,13 +217,11 @@ let MyApp = class MyApp {
             this.selectedFile = null;
             return;
         }
-        /*this.searchResults = flatStructure.filter(item => {
-          return item.type === 'file' && item.name.toLowerCase().includes(searchString.toLowerCase());
-        });*/
         this.hideSearchResults = false;
         this.indexedStructure.forEach(item => {
             const newItem = {
                 name: item.name,
+                path: item.path,
                 pdf: item,
                 pageMatches: []
             };
@@ -244,6 +243,9 @@ let MyApp = class MyApp {
                     resultsArray.push(newItem);
                 }
             }
+        });
+        this.fileNameResults = this.indexedStructure.filter(item => {
+            return item.name.toLowerCase().includes(searchString.toLowerCase());
         });
         this.searchResults = resultsArray;
     }
@@ -294,20 +296,13 @@ let MyApp = class MyApp {
                                 h("ion-button", { color: "dark", shape: "round", class: "close-search", onClick: () => this.closeSearch() },
                                     "Close Search Results",
                                     h("ion-icon", { slot: "end", name: "close" })),
-                                h("ion-list", null, this.searchResults.length > 0 ? this.searchResults.map(match => h("ion-item", { class: "file-item", detail: true, onClick: event => this.handleFileClick(event, match.pdf), onDblClick: () => this.handleFileDoubleClick(match.pdf) },
-                                    h("span", { class: "pdf" }),
-                                    h("ion-label", null,
-                                        match.name,
-                                        match.pageMatches.map(pageMatch => h("div", { class: "pdf-match" },
-                                            "Page ",
-                                            h("strong", null, pageMatch.page),
-                                            " contains ",
-                                            h("strong", null, pageMatch.textMatches),
-                                            " matches"))))) : h("p", { class: 'no-results' }, "No results match your search"))))),
+                                h("ion-list", null, this.createSearchResultsJSX())))),
                     h("div", { class: "preview-holder" },
                         this.textIndexComplete ?
                             h("ion-searchbar", { id: "Search", animated: true, placeholder: "Minimum 3 characters", onKeyUp: event => this.searchBarHandler(event), onIonCancel: event => this.searchBarHandler(event) }) :
-                            h("div", null, "Indexing PDFs.."),
+                            h("div", { class: "indexing" },
+                                "Indexing PDFs..",
+                                h("img", { src: this.SPINNER_PATH })),
                         h("div", { onClick: () => this.selectedFile && this.openFile(this.selectedFile.path) },
                             h("img", { src: this.previewDataURI })),
                         this.selectedFile && this.previewDataURI !== this.SPINNER_PATH &&
@@ -323,6 +318,9 @@ let MyApp = class MyApp {
 __decorate([
     State()
 ], MyApp.prototype, "directoryTreeJSX", void 0);
+__decorate([
+    State()
+], MyApp.prototype, "fileNameResults", void 0);
 __decorate([
     State()
 ], MyApp.prototype, "searchResults", void 0);
@@ -350,9 +348,6 @@ __decorate([
 __decorate([
     State()
 ], MyApp.prototype, "indexedStructure", void 0);
-__decorate([
-    State()
-], MyApp.prototype, "browserDirectoryStructure", void 0);
 MyApp = __decorate([
     Component({
         tag: 'my-app',

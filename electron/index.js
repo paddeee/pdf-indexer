@@ -210,18 +210,14 @@ function directoryTreeToObj(dir, done) {
           if (path.extname(file).toLowerCase() === '.pdf') {
 
             getCreationDate(file).then(creationDate => {
-            //getPDFTextContent(file).then(textContent => {
-
               results.push({
                 type: 'file',
                 name: path.basename(file, '.pdf'),
                 items: [],
                 path: file,
-                creationDate: creationDate/*,
-                textContent: textContent*/
+                creationDate: creationDate
               });
             });
-            //});
           }
           if (!--pending)
             done(null, results);
@@ -244,7 +240,7 @@ directoryTreeToObj(rootDirectory, function(err, res){
 ipcMain.on('app-ready', function() {
   splashWindow.destroy();
   splashWindow = null;
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
   mainWindow.show();
 });
 
