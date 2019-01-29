@@ -308,10 +308,7 @@ let MyApp = class MyApp {
                         this.selectedFile && this.previewDataURI !== this.SPINNER_PATH &&
                             h("div", { class: "preview-info" },
                                 h("p", null,
-                                    h("strong", null, this.selectedFile.name)),
-                                h("p", null,
-                                    "Date - ",
-                                    this.selectedFile.creationDate)))))
+                                    h("strong", null, this.selectedFile.name))))))
         ];
     }
 };

@@ -21,7 +21,7 @@ async function createWindow () {
   // Define our main window size
   mainWindow = new BrowserWindow({
     height: 768,
-    width: 1024,
+    width: 1366,
     show: false,
     webPreferences: {
       nodeIntegrationInWorker: true
@@ -99,7 +99,7 @@ app.on('before-quit', function(event) {
 
 // Read the PDF file into a typed array so PDF.js can load it.
 function getPDFScreenShotTypedArray(pdfURL) {
-    return new Uint8Array(fs.readFileSync(pdfURL));
+  return new Uint8Array(fs.readFileSync(pdfURL));
 }
 
 // Get metaData of a PDF
@@ -123,53 +123,11 @@ function getCreationDate(pdfPath) {
         const formattedDate = new Date(Date.UTC(year, month, day, 0, 0, 0)).toLocaleString('en-gb', options);
 
         resolve(formattedDate);
-      }).catch(function(err) {
-        console.log('Error getting meta data');
-        console.log(err);
-      });
-    })
-  })
-}
-
-// Get textContent of a PDF
-function getPDFTextContent(pdfPath) {
-
-  return new Promise(resolve => {
-
-    pdfjsLib.getDocument(pdfPath).then(function (doc) {
-      const numPages = doc.numPages;
-      let promises = [];
-
-      for (let i = 1; i <= numPages; i++) {
-        promises.push(getContent(i));
-      }
-
-      function getContent(pageNum) {
-
-        return new Promise(resolve => {
-
-          doc.getPage(pageNum).then(page => {
-
-            page.getTextContent().then(content => {
-
-              // Content contains lots of information about the text layout and
-              // styles, but we need only strings
-              const strings = content.items.map(item => {
-                return item.str;
-              });
-              resolve(strings);
-            })
-          })
-        })
-      }
-
-      Promise.all(promises)
-        .then(results => {
-          resolve(results);
-        })
-        .catch(e => {
-          // Handle errors here
-        });
+      }).catch(function() {
+        resolve('N/A');
+      })
+    }).catch(function() {
+      resolve('N/A');
     })
   })
 }
@@ -209,15 +167,15 @@ function directoryTreeToObj(dir, done) {
         else {
           if (path.extname(file).toLowerCase() === '.pdf') {
 
-            getCreationDate(file).then(creationDate => {
+            //getCreationDate(file).then(creationDate => {
               results.push({
                 type: 'file',
                 name: path.basename(file, '.pdf'),
                 items: [],
                 path: file,
-                creationDate: creationDate
+                creationDate: ''//creationDate
               });
-            });
+           // });
           }
           if (!--pending)
             done(null, results);

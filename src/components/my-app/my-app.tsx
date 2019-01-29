@@ -200,7 +200,6 @@ export class MyApp {
     return searchJSX;
   }
 
-
   handleFileClick(event, pdf) {
     this.timer = setTimeout(() => {
       if (!this.preventSingleClick) {
@@ -414,7 +413,6 @@ export class MyApp {
     {this.selectedFile && this.previewDataURI !== this.SPINNER_PATH &&
     <div class="preview-info">
       <p><strong>{this.selectedFile.name}</strong></p>
-      <p>Date - {this.selectedFile.creationDate}</p>
     </div>
     }
     </div>
